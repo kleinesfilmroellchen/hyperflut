@@ -1,4 +1,6 @@
+use clap::builder::ValueParser;
 use clap::Parser;
+use image::imageops::FilterType;
 
 #[derive(Parser)]
 #[command(author, version, about, disable_help_flag = true)]
@@ -49,9 +51,24 @@ pub struct Arguments {
     #[arg(short, long, alias = "bin")]
     binary: bool,
 
+    /// Image scaling algorithm to use (dev: )
+    #[arg(short, long, value_name="SCALING", default_value="gaussian", value_parser=parse_filter_type)]
+    scaling: FilterType,
+
     /// Flush socket after each pixel [default: true]
     #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
     flush: bool,
+}
+
+fn parse_filter_type(arg: &str) -> Result<FilterType, String> {
+    match arg {
+        "gaussian" => Ok(FilterType::Gaussian),
+        "triangle" => Ok(FilterType::Triangle),
+        "catmull-rom" => Ok(FilterType::CatmullRom),
+        "lanczos" => Ok(FilterType::Lanczos3),
+        "nearest" => Ok(FilterType::Nearest),
+        _ => Err(format!("invalid image filter '{}'", arg)),
+    }
 }
 
 /// CLI argument handler.

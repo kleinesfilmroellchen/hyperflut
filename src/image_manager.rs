@@ -31,17 +31,13 @@ impl ImageManager {
     }
 
     /// Instantiate the image manager, and load the images from the given paths.
-    pub fn load(paths: &[&str], size: (u16, u16)) -> ImageManager {
+    pub fn load(paths: &[&str], size: (u16, u16), scaling_filter: FilterType) -> ImageManager {
         // Show a status message
         println!("Load and process {} image(s)...", paths.len());
 
         // Load the images from the paths
-        let image_manager = ImageManager::from(
-            paths
-                .par_iter()
-                .flat_map(|path| load_image(path, size))
-                .collect(),
-        );
+        let image_manager =
+            ImageManager::from(paths.par_iter().flat_map(|path| load_image(path, size, scaling_filter)).collect());
 
         // TODO: process the image slices
 
@@ -97,7 +93,7 @@ impl ImageManager {
 }
 
 /// Load the image at the given path, and size it correctly
-fn load_image(path: &str, size: (u16, u16)) -> Vec<(DynamicImage, Option<Duration>)> {
+fn load_image(path: &str, size: (u16, u16), scaling_filter: FilterType) -> Vec<(DynamicImage, Option<Duration>)> {
     // Create a path instance
     let path = Path::new(&path);
 
@@ -158,7 +154,7 @@ fn load_image(path: &str, size: (u16, u16)) -> Vec<(DynamicImage, Option<Duratio
         .into_iter()
         .map(|(image, frame_delay)| {
             (
-                image.resize_exact(size.0 as u32, size.1 as u32, FilterType::Gaussian),
+                image.resize_exact(size.0 as u32, size.1 as u32, scaling_filter),
                 frame_delay,
             )
         })
