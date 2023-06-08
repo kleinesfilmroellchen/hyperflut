@@ -20,6 +20,7 @@ image = "0.25"
 num_cpus = "1.13.1"
 regex = "1.5"
 rayon = "1.5.1"
+net2 = "0.2.38"
 
 [profile.release]
 lto = true

@@ -1,8 +1,9 @@
 use std::io::prelude::*;
 use std::io::{Error, ErrorKind};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 
 use bufstream::BufStream;
+use net2::TcpBuilder;
 use regex::Regex;
 
 use crate::color::Color;
@@ -43,9 +44,14 @@ impl Client {
     }
 
     /// Create a new client instane from the given host, and connect to it.
-    pub fn connect(host: String, binary: bool, flush: bool) -> Result<Client, Error> {
+    pub fn connect(
+        host: String,
+        addr: impl ToSocketAddrs,
+        binary: bool,
+        flush: bool,
+    ) -> Result<Client, Error> {
         // Create a new stream, and instantiate the client
-        Ok(Client::new(create_stream(host)?, binary, flush))
+        Ok(Client::new(create_stream(host, addr)?, binary, flush))
     }
 
     /// Write a pixel to the given stream.
@@ -146,6 +152,6 @@ impl Drop for Client {
 /// Create a stream to talk to the pixelflut server.
 ///
 /// The stream is returned as result.
-fn create_stream(host: String) -> Result<TcpStream, Error> {
-    TcpStream::connect(host)
+fn create_stream(host: String, addr: impl ToSocketAddrs) -> Result<TcpStream, Error> {
+    TcpBuilder::new_v4()?.bind(addr)?.connect(host)
 }

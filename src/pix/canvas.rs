@@ -13,6 +13,7 @@ use crate::rect::Rect;
 /// A pixflut instance
 pub struct Canvas {
     host: String,
+    address: String,
     painter_count: usize,
     painter_handles: Vec<Handle>,
     size: (u16, u16),
@@ -23,6 +24,7 @@ impl Canvas {
     /// Create a new pixelflut canvas.
     pub fn new(
         host: &str,
+        address: &str,
         painter_count: usize,
         size: (u16, u16),
         offset: (u16, u16),
@@ -32,6 +34,7 @@ impl Canvas {
         // Initialize the object
         let mut canvas = Canvas {
             host: host.to_string(),
+            address: address.to_string(),
             painter_count,
             painter_handles: Vec::with_capacity(painter_count),
             size,
@@ -67,6 +70,7 @@ impl Canvas {
     fn spawn_painter(&mut self, area: Rect, binary: bool, flush: bool) {
         // Get the host that will be used
         let host = self.host.to_string();
+        let address = self.address.clone();
 
         // Redefine the offset to make it usable in the thread
         let offset = (self.offset.0, self.offset.1);
@@ -81,7 +85,7 @@ impl Canvas {
 
             loop {
                 // Connect
-                match Client::connect(host.clone(), binary, flush) {
+                match Client::connect(host.clone(), address.clone(), binary, flush) {
                     Ok(client) => {
                         painter.set_client(Some(client));
 

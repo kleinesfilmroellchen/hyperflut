@@ -1,4 +1,3 @@
-use clap::builder::ValueParser;
 use clap::Parser;
 use image::imageops::FilterType;
 
@@ -13,6 +12,9 @@ pub struct Arguments {
 
     /// The host to pwn "host:port"
     host: String,
+
+    /// The source address to bind to
+    address: String,
 
     /// Image path(s)
     #[arg(
@@ -86,6 +88,16 @@ impl ArgHandler {
     /// Get the host property.
     pub fn host(&self) -> &str {
         self.data.host.as_str()
+    }
+
+    /// Get the address property.
+    pub fn address(&self) -> &str {
+        &self.data.address.as_str()
+    }
+
+    /// Get the scaling property.
+    pub fn scaling(&self) -> FilterType {
+        self.data.scaling
     }
 
     /// Get the thread count.
