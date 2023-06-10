@@ -46,7 +46,7 @@ impl Client {
     /// Create a new client instane from the given host, and connect to it.
     pub fn connect(
         host: String,
-        addr: impl ToSocketAddrs,
+        addr: Option<impl ToSocketAddrs>,
         binary: bool,
         flush: bool,
     ) -> Result<Client, Error> {
@@ -152,6 +152,10 @@ impl Drop for Client {
 /// Create a stream to talk to the pixelflut server.
 ///
 /// The stream is returned as result.
-fn create_stream(host: String, addr: impl ToSocketAddrs) -> Result<TcpStream, Error> {
-    TcpBuilder::new_v4()?.bind(addr)?.connect(host)
+fn create_stream(host: String, addr: Option<impl ToSocketAddrs>) -> Result<TcpStream, Error> {
+    let builder = TcpBuilder::new_v4()?;
+    if let Some(addr) = addr {
+        builder.bind(addr)?;
+    }
+    builder.connect(host)
 }

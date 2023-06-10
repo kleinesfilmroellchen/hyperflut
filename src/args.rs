@@ -14,7 +14,7 @@ pub struct Arguments {
     host: String,
 
     /// The source address to bind to
-    address: String,
+    address: Option<String>,
 
     /// Image path(s)
     #[arg(
@@ -91,8 +91,8 @@ impl ArgHandler {
     }
 
     /// Get the address property.
-    pub fn address(&self) -> &str {
-        &self.data.address.as_str()
+    pub fn address(&self) -> &Option<String> {
+        &self.data.address
     }
 
     /// Get the scaling property.

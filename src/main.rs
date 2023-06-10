@@ -57,7 +57,7 @@ fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16), Error> {
     // Set up a client, and get the screen size
     let size = Client::connect(
         arg_handler.host().to_string(),
-        arg_handler.address(),
+        arg_handler.address().clone(),
         false,
         false,
     )?
