@@ -86,6 +86,8 @@ impl Painter {
                     ));
                 }
             }
+        } else if let Ok(image) = img_receiver.try_recv() {
+            self.set_image(image);
         }
 
         if let Some(client) = &mut self.client {
