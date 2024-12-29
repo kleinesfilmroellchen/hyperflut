@@ -13,6 +13,7 @@ pub struct Painter {
     area: Rect,
     offset: (u16, u16),
     image: Option<DynamicImage>,
+    buffer: String,
 }
 
 impl Painter {
@@ -28,6 +29,7 @@ impl Painter {
             area,
             offset,
             image,
+            buffer: String::new(),
         }
     }
 
@@ -53,36 +55,41 @@ impl Painter {
         // Get an RGB image
         let image = self.image.as_mut().unwrap().to_rgba8();
 
-        // Loop through all the pixels, and set their color
-        for x in 0..self.area.w {
-            for y in 0..self.area.h {
-                // Update the image to paint
-                if let Ok(image) = img_receiver.try_recv() {
-                    self.set_image(image);
-                }
+        if self.buffer.len() == 0 {
+            // Loop through all the pixels, and set their color
+            for x in 0..self.area.w {
+                for y in 0..self.area.h {
+                    // Update the image to paint
+                    if let Ok(image) = img_receiver.try_recv() {
+                        self.set_image(image);
+                    }
 
-                // Get the pixel at this location
-                let pixel = image.get_pixel(x as u32, y as u32);
+                    // Get the pixel at this location
+                    let pixel = image.get_pixel(x as u32, y as u32);
 
-                // Get the channels
-                let channels = pixel.channels();
+                    // Get the channels
+                    let channels = pixel.channels();
 
-                if channels[3] == 0 {
-                    continue;
-                }
+                    if channels[3] == 0 {
+                        continue;
+                    }
 
-                // Define the color
-                let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
+                    // Define the color
+                    let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
 
-                // Set the pixel
-                if let Some(client) = &mut self.client {
-                    client.write_pixel(
+                    // Set the pixel
+                    self.buffer.push_str(&format!(
+                        "PX {} {} {}\n",
                         x + self.area.x + self.offset.0,
                         y + self.area.y + self.offset.1,
-                        color,
-                    )?;
+                        color.as_hex()
+                    ));
                 }
             }
+        }
+
+        if let Some(client) = &mut self.client {
+            client.write_command(self.buffer.as_bytes(), true)?;
         }
 
         // Everything seems to be ok
@@ -92,6 +99,7 @@ impl Painter {
     /// Update the image that should be painted
     pub fn set_image(&mut self, image: DynamicImage) {
         self.image = Some(image);
+        self.buffer.clear();
     }
 
     /// Update the client.

@@ -106,7 +106,7 @@ impl Client {
     }
 
     /// Write the given command to the given stream.
-    fn write_command(&mut self, cmd: &[u8], newline: bool) -> Result<(), Error> {
+    pub fn write_command(&mut self, cmd: &[u8], newline: bool) -> Result<(), Error> {
         // Write the pixels and a new line
         self.stream.write_all(cmd)?;
         if newline {
