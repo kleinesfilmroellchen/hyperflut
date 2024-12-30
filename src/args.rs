@@ -1,6 +1,8 @@
 use clap::Parser;
 use image::imageops::FilterType;
 
+use crate::image_manager::ImagePreprocessing;
+
 #[derive(Parser)]
 #[command(author, version, about, disable_help_flag = true)]
 pub struct Arguments {
@@ -57,6 +59,10 @@ pub struct Arguments {
     #[arg(short, long, value_name="SCALING", default_value="gaussian", value_parser=parse_filter_type)]
     scaling: FilterType,
 
+    /// Image preprocessing to apply
+    #[arg(short, long, value_name="PROC", default_value="none", value_parser=parse_image_processing)]
+    preprocessing: ImagePreprocessing,
+
     /// Flush socket after each pixel [default: true]
     #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
     flush: bool,
@@ -70,6 +76,14 @@ fn parse_filter_type(arg: &str) -> Result<FilterType, String> {
         "lanczos" => Ok(FilterType::Lanczos3),
         "nearest" => Ok(FilterType::Nearest),
         _ => Err(format!("invalid image filter '{}'", arg)),
+    }
+}
+
+fn parse_image_processing(arg: &str) -> Result<ImagePreprocessing, String> {
+    match arg {
+        "none" => Ok(ImagePreprocessing::None),
+        "diff" => Ok(ImagePreprocessing::Diff),
+        _ => Err(format!("invalid image preprocessor '{}'", arg)),
     }
 }
 
@@ -98,6 +112,11 @@ impl ArgHandler {
     /// Get the scaling property.
     pub fn scaling(&self) -> FilterType {
         self.data.scaling
+    }
+
+    /// Get the image preprocessing property.
+    pub fn image_preprocessing(&self) -> ImagePreprocessing {
+        self.data.preprocessing
     }
 
     /// Get the thread count.

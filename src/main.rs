@@ -46,7 +46,7 @@ fn start(arg_handler: &ArgHandler) {
 
     // Load the image manager
     let mut image_manager =
-        ImageManager::load(&arg_handler.image_paths(), size, arg_handler.scaling());
+        ImageManager::load(&arg_handler.image_paths(), size, arg_handler.scaling(), arg_handler.image_preprocessing());
 
     // Start the work in the image manager, to walk through the frames
     image_manager.work(&mut canvas, arg_handler.fps());

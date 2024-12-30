@@ -9,7 +9,54 @@ use std::time::Duration;
 
 use crate::pix::canvas::Canvas;
 use image::imageops::FilterType;
-use image::{AnimationDecoder, DynamicImage};
+use image::{AnimationDecoder, DynamicImage, Rgba, RgbaImage};
+
+/// How to preprocess a sequence of images.
+#[derive(Copy, Clone, Debug, Default)]
+pub enum ImagePreprocessing {
+    /// No preprocessing.
+    #[default]
+    None,
+    /// Take difference, and set all equal pixels to transparent.
+    Diff,
+}
+
+impl ImagePreprocessing {
+    /// Execute the preprocessing.
+    pub fn execute(
+        self,
+        images: Vec<(DynamicImage, Option<Duration>)>,
+    ) -> Vec<(DynamicImage, Option<Duration>)> {
+        match self {
+            Self::None => images,
+            Self::Diff => {
+                if images.is_empty() {
+                    return Vec::new();
+                }
+                let mut diff_images = vec![images[0].clone()];
+
+                let mut last_image = images[0].0.to_rgba8();
+                for (image, duration) in images.into_iter().skip(1) {
+                    let image = image.to_rgba8();
+                    let difference =
+                        RgbaImage::from_par_fn(image.width(), image.height(), |x, y| {
+                            let this = image.get_pixel(x, y);
+                            let last = last_image.get_pixel(x, y);
+                            if this == last {
+                                Rgba::<u8>([0, 0, 0, 0])
+                            } else {
+                                *this
+                            }
+                        });
+                    diff_images.push((DynamicImage::from(difference), duration));
+                    last_image = image;
+                }
+
+                diff_images
+            }
+        }
+    }
+}
 
 /// A manager that manages all images to print.
 pub struct ImageManager {
@@ -31,7 +78,12 @@ impl ImageManager {
     }
 
     /// Instantiate the image manager, and load the images from the given paths.
-    pub fn load(paths: &[&str], size: (u16, u16), scaling_filter: FilterType) -> ImageManager {
+    pub fn load(
+        paths: &[&str],
+        size: (u16, u16),
+        scaling_filter: FilterType,
+        preprocessing: ImagePreprocessing,
+    ) -> ImageManager {
         // Show a status message
         println!("Load and process {} image(s)...", paths.len());
 
@@ -39,7 +91,7 @@ impl ImageManager {
         let image_manager = ImageManager::from(
             paths
                 .par_iter()
-                .flat_map(|path| load_image(path, size, scaling_filter))
+                .flat_map(|path| load_image(path, size, scaling_filter, preprocessing))
                 .collect(),
         );
 
@@ -101,6 +153,7 @@ fn load_image(
     path: &str,
     size: (u16, u16),
     scaling_filter: FilterType,
+    preprocessing: ImagePreprocessing,
 ) -> Vec<(DynamicImage, Option<Duration>)> {
     // Create a path instance
     let path = Path::new(&path);
@@ -157,8 +210,9 @@ fn load_image(
         _ => vec![(image::open(path).unwrap(), None)],
     };
 
-    // Resize images to fit the screen
-    images
+    // preprocess and resize images to fit the screen
+    preprocessing
+        .execute(images)
         .into_iter()
         .map(|(image, frame_delay)| {
             (
