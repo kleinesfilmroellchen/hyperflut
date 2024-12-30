@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::io::Error;
 use std::sync::mpsc::Receiver;
 
@@ -82,12 +83,14 @@ impl Painter {
                     let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
 
                     // Set the pixel
-                    self.buffer.push_str(&format!(
-                        "PX {} {} {}\n",
+                    writeln!(
+                        &mut self.buffer,
+                        "PX {} {} {}",
                         x + self.area.x + self.offset.0,
                         y + self.area.y + self.offset.1,
                         color.as_hex()
-                    ));
+                    )
+                    .unwrap();
                 }
             }
         }
