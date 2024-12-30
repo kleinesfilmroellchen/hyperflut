@@ -83,6 +83,7 @@ fn parse_image_processing(arg: &str) -> Result<ImagePreprocessing, String> {
     match arg {
         "none" => Ok(ImagePreprocessing::None),
         "diff" => Ok(ImagePreprocessing::Diff),
+        "cutoff" => Ok(ImagePreprocessing::Cutoff),
         _ => Err(format!("invalid image preprocessor '{}'", arg)),
     }
 }

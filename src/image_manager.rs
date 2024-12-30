@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::pix::canvas::Canvas;
 use image::imageops::FilterType;
-use image::{AnimationDecoder, DynamicImage, Rgba, RgbaImage};
+use image::{AnimationDecoder, DynamicImage, GenericImageView, Pixel, Rgba, RgbaImage};
 
 /// How to preprocess a sequence of images.
 #[derive(Copy, Clone, Debug, Default)]
@@ -19,6 +19,8 @@ pub enum ImagePreprocessing {
     None,
     /// Take difference, and set all equal pixels to transparent.
     Diff,
+    /// Cut off dark pixels and replace them with transparent.
+    Cutoff,
 }
 
 impl ImagePreprocessing {
@@ -54,6 +56,26 @@ impl ImagePreprocessing {
 
                 diff_images
             }
+            Self::Cutoff => images
+                .into_iter()
+                .map(|(image, duration)| {
+                    (
+                        DynamicImage::from(RgbaImage::from_par_fn(
+                            image.width(),
+                            image.height(),
+                            |x, y| {
+                                let pixel = image.get_pixel(x, y);
+                                if pixel.to_luma().0[0] < 127 {
+                                    Rgba::<u8>([0, 0, 0, 0])
+                                } else {
+                                    pixel
+                                }
+                            },
+                        )),
+                        duration,
+                    )
+                })
+                .collect(),
         }
     }
 }

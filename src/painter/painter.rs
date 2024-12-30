@@ -52,6 +52,10 @@ impl Painter {
             println!("Painter thread received an image, painting...");
         }
 
+        if let Ok(image) = img_receiver.try_recv() {
+            self.set_image(image);
+        }
+
         // Get an RGB image
         let image = self.image.as_mut().unwrap().to_rgba8();
 
@@ -86,8 +90,6 @@ impl Painter {
                     ));
                 }
             }
-        } else if let Ok(image) = img_receiver.try_recv() {
-            self.set_image(image);
         }
 
         if let Some(client) = &mut self.client {
