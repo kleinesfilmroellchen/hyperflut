@@ -21,6 +21,11 @@ num_cpus = "1.13.1"
 regex = "1.5"
 rayon = "1.5.1"
 net2 = "0.2.38"
+gstreamer = "0.23.4"
+derive_more = { version = "1.0.0", features = ["display", "error"] }
+gstreamer-app = "0.23.4"
+gstreamer-video = "0.23.4"
+anyhow = { version = "1.0.95", features = ["backtrace"] }
 
 [profile.release]
 lto = true

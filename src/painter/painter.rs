@@ -15,6 +15,7 @@ pub struct Painter {
     offset: (u16, u16),
     image: Option<DynamicImage>,
     buffer: String,
+    should_buffer: bool,
 }
 
 impl Painter {
@@ -24,6 +25,7 @@ impl Painter {
         area: Rect,
         offset: (u16, u16),
         image: Option<DynamicImage>,
+        should_buffer: bool,
     ) -> Painter {
         Painter {
             client,
@@ -31,6 +33,7 @@ impl Painter {
             offset,
             image,
             buffer: String::new(),
+            should_buffer,
         }
     }
 
@@ -40,7 +43,7 @@ impl Painter {
         // Wait for an image, if no image has been set yet
         if self.image.is_none() {
             // Show a warning
-            println!("Painter thread is waiting for an image...");
+            // println!("Painter thread is waiting for an image...");
 
             // Sleep a little
             // TODO: Do a proper error return here
@@ -50,7 +53,7 @@ impl Painter {
             }
 
             // We may now continue
-            println!("Painter thread received an image, painting...");
+            println!("Painter thread received an image, painting... {}", self.should_buffer);
         }
 
         if let Ok(image) = img_receiver.try_recv() {
@@ -60,7 +63,7 @@ impl Painter {
         // Get an RGB image
         let image = self.image.as_mut().unwrap().to_rgba8();
 
-        if self.buffer.len() == 0 {
+        if !self.should_buffer || self.buffer.len() == 0 {
             // Loop through all the pixels, and set their color
             for x in 0..self.area.w {
                 for y in 0..self.area.h {
@@ -83,20 +86,32 @@ impl Painter {
                     let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
 
                     // Set the pixel
-                    writeln!(
-                        &mut self.buffer,
-                        "PX {} {} {}",
-                        x + self.area.x + self.offset.0,
-                        y + self.area.y + self.offset.1,
-                        color.as_hex()
-                    )
-                    .unwrap();
+                    if self.should_buffer {
+                        writeln!(
+                            &mut self.buffer,
+                            "PX {} {} {}",
+                            x + self.area.x + self.offset.0,
+                            y + self.area.y + self.offset.1,
+                            color.as_hex()
+                        )
+                        .unwrap();
+                    } else {
+                        if let Some(client) = &mut self.client {
+                            client.write_pixel(
+                                x + self.area.x + self.offset.0,
+                                y + self.area.y + self.offset.1,
+                                color,
+                            )?;
+                        }
+                    }
                 }
             }
         }
 
-        if let Some(client) = &mut self.client {
-            client.write_command(self.buffer.as_bytes(), true)?;
+        if self.should_buffer {
+            if let Some(client) = &mut self.client {
+                client.write_command(self.buffer.as_bytes(), true)?;
+            }
         }
 
         // Everything seems to be ok

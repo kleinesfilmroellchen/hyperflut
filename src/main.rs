@@ -1,5 +1,6 @@
 mod args;
 mod color;
+mod gst;
 mod image_manager;
 mod painter;
 mod pix;
@@ -8,6 +9,7 @@ mod rect;
 use std::io::Error;
 
 use args::ArgHandler;
+use gst::GstSink;
 use image_manager::ImageManager;
 use pix::canvas::Canvas;
 use pix::client::Client;
@@ -27,11 +29,18 @@ fn start(arg_handler: &ArgHandler) {
     println!("Starting... (use CTRL+C to stop)");
 
     // Gather facts about the host
-    let screen_size =
-        gather_host_facts(arg_handler).expect("Failed to gather facts about pixelflut server");
+    let screen_size = gather_host_facts(arg_handler).ok();
 
     // Determine the size to use
-    let size = arg_handler.size(Some(screen_size));
+    let size = arg_handler.size(screen_size);
+
+    // Load the image manager
+    let mut image_manager = ImageManager::load(
+        &arg_handler.image_paths(),
+        size,
+        arg_handler.scaling(),
+        arg_handler.image_preprocessing(),
+    );
 
     // Create a new pixelflut canvas
     let mut canvas = Canvas::new(
@@ -42,14 +51,24 @@ fn start(arg_handler: &ArgHandler) {
         arg_handler.offset(),
         arg_handler.binary(),
         arg_handler.flush(),
+        image_manager.image_count() == 1,
     );
 
-    // Load the image manager
-    let mut image_manager =
-        ImageManager::load(&arg_handler.image_paths(), size, arg_handler.scaling(), arg_handler.image_preprocessing());
-
-    // Start the work in the image manager, to walk through the frames
-    image_manager.work(&mut canvas, arg_handler.fps());
+    if let Some(pipeline) = arg_handler.pipeline() {
+        let sink = GstSink::new(size.0, size.1, &pipeline, canvas);
+        match sink {
+            Err(why) => eprintln!("error setting up GStreamer: {}", why),
+            Ok(mut sink) => {
+                let result = sink.work();
+                if let Err(why) = result {
+                    eprintln!("error running GStreamer: {why}");
+                }
+            }
+        }
+    } else {
+        // Start the work in the image manager, to walk through the frames
+        image_manager.work(&mut canvas, arg_handler.fps());
+    }
 }
 
 /// Gather important facts about the host.

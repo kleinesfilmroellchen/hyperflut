@@ -18,16 +18,8 @@ pub struct Arguments {
     /// The source address to bind to
     address: Option<String>,
 
-    /// Image path(s)
-    #[arg(
-        short,
-        long,
-        value_name = "PATH",
-        required = true,
-        alias = "images",
-        num_args(1..)
-    )]
-    image: Vec<String>,
+    #[command(flatten)]
+    input: InputArguments,
 
     /// Draw width [default: screen width]
     #[arg(short, long, value_name = "PIXELS")]
@@ -59,13 +51,37 @@ pub struct Arguments {
     #[arg(short, long, value_name="SCALING", default_value="gaussian", value_parser=parse_filter_type)]
     scaling: FilterType,
 
-    /// Image preprocessing to apply
-    #[arg(short, long, value_name="PROC", default_value="none", value_parser=parse_image_processing)]
+    /// Image preprocessing to apply. Can be one of: [none, diff, cutoff]
+    #[arg(long, value_name="PROC", default_value="none", value_parser=parse_image_processing)]
     preprocessing: ImagePreprocessing,
 
     /// Flush socket after each pixel [default: true]
     #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
     flush: bool,
+}
+
+#[derive(Parser)]
+#[group(required = true)]
+pub struct InputArguments {
+    /// Image path(s)
+    #[arg(
+        short,
+        long,
+        value_name = "PATH",
+        alias = "images",
+        num_args(1..)
+    )]
+    image: Vec<String>,
+
+    /// Gstreamer input pipeline to use.
+    /// This is an alternative to input images.
+    /// The pipeline format is identical to gst-launch, see
+    /// https://gstreamer.freedesktop.org/documentation/tools/gst-launch.html#pipeline-description for a description.
+    /// A raw video source pad (unconnected) must be available that will be output to pixelflut.
+    /// This element must be named `pixelflut_out`.
+    /// Any format will be scaled and converted to the draw size.
+    #[arg(long, value_name = "PIPELINE")]
+    pipeline: Option<String>,
 }
 
 fn parse_filter_type(arg: &str) -> Result<FilterType, String> {
@@ -127,7 +143,11 @@ impl ArgHandler {
 
     /// Get the image paths.
     pub fn image_paths(&self) -> Vec<&str> {
-        self.data.image.iter().map(|x| x.as_str()).collect()
+        self.data.input.image.iter().map(|x| x.as_str()).collect()
+    }
+
+    pub fn pipeline(&self) -> Option<String> {
+        self.data.input.pipeline.clone()
     }
 
     /// Get the image size.

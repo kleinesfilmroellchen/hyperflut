@@ -107,7 +107,9 @@ impl ImageManager {
         preprocessing: ImagePreprocessing,
     ) -> ImageManager {
         // Show a status message
-        println!("Load and process {} image(s)...", paths.len());
+        if !paths.is_empty() {
+            println!("Load and process {} image(s)...", paths.len());
+        }
 
         // Load the images from the paths
         let image_manager = ImageManager::from(
@@ -125,10 +127,19 @@ impl ImageManager {
         image_manager
     }
 
+    /// Returns the amount of animation frames / images loaded by the image manager.
+    pub fn image_count(&self) -> usize {
+        self.images.len()
+    }
+
     /// Tick the image
     ///
     /// Returns the desired duration for othis frame.
     pub fn tick(&mut self, canvas: &mut Canvas) -> Option<Duration> {
+        if self.images.is_empty() {
+            return None;
+        }
+
         // Get the image index bound
         let bound = self.images.len();
 

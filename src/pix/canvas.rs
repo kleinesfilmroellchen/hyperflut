@@ -18,6 +18,7 @@ pub struct Canvas {
     painter_handles: Vec<Handle>,
     size: (u16, u16),
     offset: (u16, u16),
+    should_buffer: bool,
 }
 
 impl Canvas {
@@ -30,6 +31,7 @@ impl Canvas {
         offset: (u16, u16),
         binary: bool,
         flush: bool,
+        should_buffer: bool,
     ) -> Canvas {
         // Initialize the object
         let mut canvas = Canvas {
@@ -39,6 +41,7 @@ impl Canvas {
             painter_handles: Vec::with_capacity(painter_count),
             size,
             offset,
+            should_buffer,
         };
 
         // Show a status message
@@ -72,8 +75,9 @@ impl Canvas {
         let host = self.host.to_string();
         let address = self.address.clone();
 
-        // Redefine the offset to make it usable in the thread
+        // Redefine values to make them usable in the thread
         let offset = (self.offset.0, self.offset.1);
+        let should_buffer = self.should_buffer;
 
         // Create a channel to push new images
         let (tx, rx): (Sender<DynamicImage>, Receiver<DynamicImage>) = mpsc::channel();
@@ -81,7 +85,7 @@ impl Canvas {
         // Create the painter thread
         let thread = thread::spawn(move || {
             // Create the painter
-            let mut painter = Painter::new(None, area, offset, None);
+            let mut painter = Painter::new(None, area, offset, None, should_buffer);
 
             loop {
                 // Connect
