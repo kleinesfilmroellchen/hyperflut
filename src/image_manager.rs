@@ -9,7 +9,10 @@ use std::time::Duration;
 
 use crate::pix::canvas::Canvas;
 use image::imageops::FilterType;
-use image::{AnimationDecoder, DynamicImage, GenericImageView, Pixel, Rgba, RgbaImage};
+use image::{
+    AnimationDecoder, DynamicImage, Frame, Frames, GenericImageView, ImageError, Pixel, Rgba,
+    RgbaImage,
+};
 
 /// How to preprocess a sequence of images.
 #[derive(Copy, Clone, Debug, Default)]
@@ -244,7 +247,7 @@ fn load_image(
     // preprocess and resize images to fit the screen
     preprocessing
         .execute(images)
-        .into_iter()
+        .into_par_iter()
         .map(|(image, frame_delay)| {
             (
                 image.resize_exact(size.0 as u32, size.1 as u32, scaling_filter),
