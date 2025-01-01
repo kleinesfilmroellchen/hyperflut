@@ -48,6 +48,10 @@ Use the `--help` flag for all available options.
 
 Hyperflut is written in Rust and built with Cargo. It uses a stable toolchain and runs on at least the latest Rust version.
 
+Hyperflut has some features that can be enabled and disabled depending on your needs:
+
+- `gst`: Enables GStreamer support. This is not enabled by default since the native GStreamer libraries are required, and their installation is not possible/straightforward on all platforms. [See here](https://gitlab.freedesktop.org/gstreamer/gstreamer-rs#installation) for the official installation instructions if you want to use GStreamer.
+
 Clone and install `hyperflut` with:
 
 ```shell
@@ -57,6 +61,8 @@ cd hyperflut
 
 # Install hyperflut to your system
 cargo install -f
+# With GStreamer support:
+cargo install --features gst -f
 
 # Start using hyperflut
 hyperflut --help

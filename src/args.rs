@@ -80,6 +80,7 @@ pub struct InputArguments {
     /// A raw video source pad (unconnected) must be available that will be output to pixelflut.
     /// This element must be named `pixelflut_out`.
     /// Any format will be scaled and converted to the draw size.
+    #[cfg(feature = "gst")]
     #[arg(long, value_name = "PIPELINE")]
     pipeline: Option<String>,
 }
@@ -146,6 +147,7 @@ impl ArgHandler {
         self.data.input.image.iter().map(|x| x.as_str()).collect()
     }
 
+    #[cfg(feature = "gst")]
     pub fn pipeline(&self) -> Option<String> {
         self.data.input.pipeline.clone()
     }

@@ -1,5 +1,6 @@
 mod args;
 mod color;
+#[cfg(feature = "gst")]
 mod gst;
 mod image_manager;
 mod painter;
@@ -9,7 +10,6 @@ mod rect;
 use std::io::Error;
 
 use args::ArgHandler;
-use gst::GstSink;
 use image_manager::ImageManager;
 use pix::canvas::Canvas;
 use pix::client::Client;
@@ -54,8 +54,9 @@ fn start(arg_handler: &ArgHandler) {
         image_manager.image_count() == 1,
     );
 
+    #[cfg(feature = "gst")]
     if let Some(pipeline) = arg_handler.pipeline() {
-        let sink = GstSink::new(size.0, size.1, &pipeline, canvas);
+        let sink = gst::GstSink::new(size.0, size.1, &pipeline, canvas);
         match sink {
             Err(why) => eprintln!("error setting up GStreamer: {}", why),
             Ok(mut sink) => {
@@ -67,6 +68,11 @@ fn start(arg_handler: &ArgHandler) {
         }
     } else {
         // Start the work in the image manager, to walk through the frames
+        image_manager.work(&mut canvas, arg_handler.fps());
+    }
+
+    #[cfg(not(feature = "gst"))]
+    {
         image_manager.work(&mut canvas, arg_handler.fps());
     }
 }

@@ -2,29 +2,41 @@
 name = "hyperflut"
 version = "0.1.0"
 edition = "2021"
-authors = ["Tim Visée <timvisee@gmail.com>", "kleines Filmröllchen <kleines@filmroellchen.eu>"]
+authors = [
+    "Tim Visée <timvisee@gmail.com>",
+    "kleines Filmröllchen <kleines@filmroellchen.eu>",
+]
 license = "GPL-3.0"
 readme = "README.md"
 repository = "https://github.com/kleinesfilmroellchen/hyperflut"
 description = "Fast and feature-rich Pixelflut client focused on image and video streaming"
 keywords = ["hyperflut", "pixelflut"]
-categories = [
-    "command-line-utilities",
+categories = ["command-line-utilities"]
+
+[features]
+gst = [
+    "dep:gstreamer",
+    "dep:gstreamer-app",
+    "dep:gstreamer-video",
+    "dep:derive_more",
 ]
 
 [dependencies]
 bufstream = "0.1"
-clap = { version = "4.4", features = [ "derive" ] }
+clap = { version = "4", features = ["derive"] }
 image = "0.25"
-num_cpus = "1.13.1"
+num_cpus = "1.13"
 regex = "1.5"
-rayon = "1.5.1"
+rayon = "1.5"
 net2 = "0.2.38"
-gstreamer = "0.23.4"
-derive_more = { version = "1.0.0", features = ["display", "error"] }
-gstreamer-app = "0.23.4"
-gstreamer-video = "0.23.4"
 anyhow = { version = "1.0.95", features = ["backtrace"] }
+derive_more = { version = "1", features = [
+    "display",
+    "error",
+], optional = true }
+gstreamer = { version = "0.23", optional = true }
+gstreamer-app = { version = "0.23", optional = true }
+gstreamer-video = { version = "0.23", optional = true }
 
 [profile.release]
 lto = true
