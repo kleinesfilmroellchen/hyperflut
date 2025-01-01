@@ -35,8 +35,6 @@ impl GstSink {
     }
 
     pub fn work(&mut self) -> Result<(), Error> {
-        self.pipeline.set_state(gstreamer::State::Ready)?;
-
         self.pipeline.set_state(gstreamer::State::Playing)?;
 
         let bus = self
@@ -165,11 +163,6 @@ fn create_pipeline(
     );
 
     pipeline.set_state(gstreamer::State::Ready)?;
-
-    let output = pipeline
-        .debug_to_dot_data(DebugGraphDetails::all())
-        .to_string();
-    std::fs::write("stream.dot", output).unwrap();
 
     Ok(pipeline)
 }
