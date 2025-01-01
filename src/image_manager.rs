@@ -119,8 +119,6 @@ impl ImageManager {
                 .collect(),
         );
 
-        // TODO: process the image slices
-
         // We succeeded
         println!("All images have been loaded successfully");
 
