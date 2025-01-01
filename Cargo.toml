@@ -22,7 +22,7 @@ gst = [
 ]
 
 [dependencies]
-bufstream = "0.1"
+bufstream-fresh = "0.3"
 clap = { version = "4", features = ["derive"] }
 image = "0.25"
 num_cpus = "1.13"

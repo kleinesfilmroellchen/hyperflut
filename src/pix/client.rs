@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::net::{TcpStream, ToSocketAddrs};
 
 use anyhow::{anyhow, Result};
-use bufstream::BufStream;
+use bufstream_fresh::BufStream;
 use net2::TcpBuilder;
 use regex::Regex;
 
@@ -34,7 +34,7 @@ impl Client {
     /// Create a new client instance.
     pub fn new(stream: TcpStream, flush: bool) -> Client {
         Client {
-            stream: BufStream::new(stream),
+            stream: BufStream::with_capacities(128, 8 * 1024, stream),
             flush,
         }
     }
