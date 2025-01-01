@@ -7,8 +7,7 @@ mod painter;
 mod pix;
 mod rect;
 
-use std::io::Error;
-
+use anyhow::Result;
 use args::ArgHandler;
 use image_manager::ImageManager;
 use pix::canvas::Canvas;
@@ -77,7 +76,7 @@ fn start(arg_handler: &ArgHandler) {
 }
 
 /// Gather important facts about the host.
-fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16), Error> {
+fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16)> {
     // Set up a client, and get the screen size
     let size = Client::connect(
         arg_handler.host().to_string(),

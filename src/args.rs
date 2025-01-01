@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use image::imageops::FilterType;
 
@@ -81,23 +82,23 @@ pub struct InputArguments {
     pipeline: Option<String>,
 }
 
-fn parse_filter_type(arg: &str) -> Result<FilterType, String> {
+fn parse_filter_type(arg: &str) -> Result<FilterType> {
     match arg {
         "gaussian" => Ok(FilterType::Gaussian),
         "triangle" => Ok(FilterType::Triangle),
         "catmull-rom" => Ok(FilterType::CatmullRom),
         "lanczos" => Ok(FilterType::Lanczos3),
         "nearest" => Ok(FilterType::Nearest),
-        _ => Err(format!("invalid image filter '{}'", arg)),
+        _ => Err(anyhow!("invalid image filter '{}'", arg)),
     }
 }
 
-fn parse_image_processing(arg: &str) -> Result<ImagePreprocessing, String> {
+fn parse_image_processing(arg: &str) -> Result<ImagePreprocessing> {
     match arg {
         "none" => Ok(ImagePreprocessing::None),
         "diff" => Ok(ImagePreprocessing::Diff),
         "cutoff" => Ok(ImagePreprocessing::Cutoff),
-        _ => Err(format!("invalid image preprocessor '{}'", arg)),
+        _ => Err(anyhow!("invalid image preprocessor '{}'", arg)),
     }
 }
 

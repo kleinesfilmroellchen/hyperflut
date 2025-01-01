@@ -1,7 +1,7 @@
 use std::io::prelude::*;
-use std::io::{Error, ErrorKind};
 use std::net::{TcpStream, ToSocketAddrs};
 
+use anyhow::{anyhow, Result};
 use bufstream::BufStream;
 use net2::TcpBuilder;
 use regex::Regex;
@@ -40,17 +40,13 @@ impl Client {
     }
 
     /// Create a new client instane from the given host, and connect to it.
-    pub fn connect(
-        host: String,
-        addr: Option<impl ToSocketAddrs>,
-        flush: bool,
-    ) -> Result<Client, Error> {
+    pub fn connect(host: String, addr: Option<impl ToSocketAddrs>, flush: bool) -> Result<Client> {
         // Create a new stream, and instantiate the client
         Ok(Client::new(create_stream(host, addr)?, flush))
     }
 
     /// Write a pixel to the given stream.
-    pub fn write_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<(), Error> {
+    pub fn write_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()> {
         self.write_command(
             format!("PX {} {} {}", x, y, color.as_hex()).as_bytes(),
             true,
@@ -58,11 +54,9 @@ impl Client {
     }
 
     /// Read the size of the screen.
-    pub fn read_screen_size(&mut self) -> Result<(u16, u16), Error> {
+    pub fn read_screen_size(&mut self) -> Result<(u16, u16)> {
         // Read the screen size
-        let data = self
-            .write_read_command(b"SIZE")
-            .expect("Failed to read screen size");
+        let data = self.write_read_command(b"SIZE")?;
 
         // Build a regex to parse the screen size
         let re = Regex::new(PIX_SERVER_SIZE_REGEX).unwrap();
@@ -77,15 +71,14 @@ impl Client {
                     .parse::<u16>()
                     .expect("Failed to parse screen height, received malformed data"),
             )),
-            None => Err(Error::new(
-                ErrorKind::Other,
+            None => Err(anyhow!(
                 "Failed to parse screen size, received malformed data",
             )),
         }
     }
 
     /// Write the given command to the given stream.
-    pub fn write_command(&mut self, cmd: &[u8], newline: bool) -> Result<(), Error> {
+    pub fn write_command(&mut self, cmd: &[u8], newline: bool) -> Result<()> {
         // Write the pixels and a new line
         self.stream.write_all(cmd)?;
         if newline {
@@ -104,7 +97,7 @@ impl Client {
     }
 
     /// Write the given command to the given stream, and read the output.
-    fn write_read_command(&mut self, cmd: &[u8]) -> Result<String, Error> {
+    fn write_read_command(&mut self, cmd: &[u8]) -> Result<String> {
         // Write the command
         self.write_command(cmd, true)?;
 
@@ -131,10 +124,11 @@ impl Drop for Client {
 /// Create a stream to talk to the pixelflut server.
 ///
 /// The stream is returned as result.
-fn create_stream(host: String, addr: Option<impl ToSocketAddrs>) -> Result<TcpStream, Error> {
+fn create_stream(host: String, addr: Option<impl ToSocketAddrs>) -> Result<TcpStream> {
     let builder = TcpBuilder::new_v4()?;
     if let Some(addr) = addr {
         builder.bind(addr)?;
     }
-    builder.connect(host)
+    let stream = builder.connect(host)?;
+    Ok(stream)
 }

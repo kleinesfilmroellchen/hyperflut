@@ -1,10 +1,10 @@
 //! Gstreamer support.
-//! 
+//!
 //! This file is licensed under the Unlicense.
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Result};
 use derive_more::derive::{Display, Error};
-use gstreamer::{element_error, glib, prelude::*, DebugGraphDetails};
+use gstreamer::{element_error, glib, prelude::*};
 use image::{DynamicImage, RgbaImage};
 
 use crate::pix::canvas::Canvas;
@@ -29,12 +29,12 @@ impl GstSink {
         height: u16,
         pipeline_description: &str,
         canvas: Canvas,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let pipeline = create_pipeline(width, height, pipeline_description, canvas)?;
         Ok(Self { pipeline })
     }
 
-    pub fn work(&mut self) -> Result<(), Error> {
+    pub fn work(&mut self) -> Result<()> {
         self.pipeline.set_state(gstreamer::State::Playing)?;
 
         let bus = self
@@ -75,7 +75,7 @@ fn create_pipeline(
     height: u16,
     pipeline_description: &str,
     mut canvas: Canvas,
-) -> Result<gstreamer::Pipeline, Error> {
+) -> Result<gstreamer::Pipeline> {
     gstreamer::init()?;
     gstreamer::log::set_default_threshold(gstreamer::DebugLevel::Warning);
     gstreamer::log::set_active(true);

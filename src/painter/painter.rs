@@ -1,5 +1,5 @@
+use anyhow::Result;
 use std::fmt::Write;
-use std::io::Error;
 use std::sync::mpsc::Receiver;
 
 use image::{DynamicImage, Pixel};
@@ -39,21 +39,16 @@ impl Painter {
 
     /// Perform work.
     /// Paint the whole defined area.
-    pub fn work(&mut self, img_receiver: &Receiver<DynamicImage>) -> Result<(), Error> {
+    pub fn work(&mut self, img_receiver: &Receiver<DynamicImage>) -> Result<()> {
         // Wait for an image, if no image has been set yet
         if self.image.is_none() {
             // Show a warning
-            // println!("Painter thread is waiting for an image...");
 
-            // Sleep a little
-            // TODO: Do a proper error return here
-            match img_receiver.recv() {
-                Ok(image) => self.set_image(image),
-                Err(_) => return Ok(()),
-            }
+            // Wait for the first image to come in.
+            self.set_image(img_receiver.recv()?);
 
             // We may now continue
-            println!("Painter thread received an image, painting... {}", self.should_buffer);
+            println!("Painter thread received an image, painting...");
         }
 
         if let Ok(image) = img_receiver.try_recv() {
