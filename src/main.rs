@@ -23,7 +23,7 @@ fn main() {
     start(&arg_handler);
 }
 
-/// Start pixelflutting.
+/// Start pixelfluting.
 fn start(arg_handler: &ArgHandler) {
     // Start
     println!("Starting... (use CTRL+C to stop)");

@@ -1,14 +1,13 @@
 [package]
-name = "pixelpwnr"
+name = "hyperflut"
 version = "0.1.0"
 edition = "2021"
-authors = ["Tim Visée <timvisee@gmail.com>"]
+authors = ["Tim Visée <timvisee@gmail.com>", "kleines Filmröllchen <kleines@filmroellchen.eu>"]
 license = "GPL-3.0"
 readme = "README.md"
-homepage = "https://timvisee.com/projects/pixelpwnr"
-repository = "https://github.com/timvisee/pixelpwnr"
-description = "Insanely fast pixelflut client for images and animations"
-keywords = ["pixelflut", "pixelpwnr"]
+repository = "https://github.com/kleinesfilmroellchen/hyperflut"
+description = "Fast and feature-rich Pixelflut client focused on image and video streaming"
+keywords = ["hyperflut", "pixelflut"]
 categories = [
     "command-line-utilities",
 ]

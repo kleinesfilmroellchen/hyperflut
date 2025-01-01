@@ -1,39 +1,37 @@
-# pixelpwnr
+# hyperflut
 
-A quick [pixelflut][pixelflut] ([video][pixelflut-video]) client in
-[Rust][rust] for use at [34C3][34C3], that _pwns_ whole pixelflut panels.
+A fast and feature-rich [Pixelflut](https://github.com/defnull/pixelflut) client. This client is focused on streaming rectangular raster images and video (optionally with alpha) onto pixelflut servers as fast as possible. This is considered the “default” Pixelflut application and what many want to do with their local Pixelflut server. It does not aim to cover more specialized use cases, especially ones that can dynamically write to various different parts of the screen.
 
-For a high performance pixelflut client and server implementations, see:
-- [pixelpwnr-server][pixelpwnr-server]: server
-- [pixelpwnr-cast][pixelpwnr-cast]: cast your screen to a pixelflut server
+hyperflut is a hard fork of [pixelpwnr](https://timvisee.com/projects/pixelpwnr/), last synced at 38c3 (end of 2024). Many command line options are currently compatible with pixelpwnr’s syntax, but this is not guaranteed to hold in the future.
 
 ## Features
 
-* Many concurrent drawing pipes, fast multithreading
-* Animated images, with GIFs or multiple frame images
-* Control over render sizes and offset
-* Automatic image sizing and formatting
-* Blazingly fast [binary protocol](https://github.com/timvisee/pixelpwnr-server#the-binary-px-command) (`PB` with `--binary`)
-* Faster than most other clients :-)
-* Linux, Windows and macOS
+- Animated images (GIF and other multi-frame formats)
+- GStreamer pipelines (user-specified with gst-launch syntax) to stream a vast variety of video sources onto pixelflut canvases
+- Control over render sizes and offset
+- Automatic image sizing and formatting
+- Faster than most other clients :-)
+- Portable; the image and animation mode supports any std environment
 
 ## Usage
 
 Pixelflut a simple image:
-```bash
+
+```shell
 # Flut a simple image.
 # - To host 127.0.0.1 on port 8080
 # - With the image: image.png
 # - With 4 painting threads
 # - With the size of the screen (default)
-pixelpwnr 127.0.0.1:8080 -i image.png -c 4
+hyperflut 127.0.0.1:8080 -i image.png -c 4
 
 # Other CLI syntax is also supported
-pixelpwnr "127.0.0.1:8080" --image="image.png" -c=4
+hyperflut "127.0.0.1:8080" --image="image.png" -c=4
 ```
 
 Pixelflut an animated image:
-```bash
+
+```shell
 # Flut an animated image, with multiple frames.
 # - To host 127.0.0.1 on port 8080
 # - With the images: *.png
@@ -41,111 +39,66 @@ Pixelflut an animated image:
 # - With 4 painting threads
 # - With a size of (400, 400)
 # - With an offset of (100, 100)
-pixelpwnr 127.0.0.1:8080 -i *.png --fps 5 -c 4 -w 400 -h 400 -x 100 -y 100
+hyperflut 127.0.0.1:8080 -i *.png --fps 5 -c 4 -w 400 -h 400 -x 100 -y 100
 ```
 
-Use the `--help` flag, or see the [help](#help) section for all available
-options.
+Use the `--help` flag for all available options.
 
 ## Installation
 
-For installation, Git and Rust cargo are required.
-Install the latest version of Rust with [rustup][rustup].
+Hyperflut is written in Rust and built with Cargo. It uses a stable toolchain and runs on at least the latest Rust version.
 
-Then, clone and install `pixelpwnr` with:
+Clone and install `hyperflut` with:
 
-```bash
+```shell
 # Clone the project
-git clone https://github.com/timvisee/pixelpwnr.git
-cd pixelpwnr
+git clone https://github.com/kleinesfilmroellchen/hyperflut.git
+cd hyperflut
 
-# Install pixelpwnr
+# Install hyperflut to your system
 cargo install -f
 
-# Start using pixelpwnr
-pixelpwnr --help
+# Start using hyperflut
+hyperflut --help
 
 # or run it directly from Cargo
 cargo run --release -- --help
-```
 
-Or just build it and invoke the binary directly (Linux/macOS):
-
-```bash
-# Clone the project
-git clone https://github.com/timvisee/pixelpwnr.git
-cd pixelpwnr
-
-# Build the project (release version)
-cargo build --release
-
-# Start using pixelpwnr
-./target/release/pixelpwnr --help
+# After building once, you can also use:
+./target/release/hyperflut --help
 ```
 
 ## Performance & speed optimization
 
 There are many things that affect how quickly pixels can be painted on a
-pixelflut server.  
+pixelflut server.
 Some of them are:
+
 - Size of the image that is drawn.
 - Amount of connections used to push pixels.
-- Performance of the machine `pixelpwnr` is running on.
+- Performance of the machine `hyperflut` is running on.
 - Network interface performance of the client.
 - Network interface performance of the server.
 - Performance of the pixelflut server.
 
 Things that improve painting performance:
-- Use a wired connection.
-- Use a LAN connection, closely linked to the pixelflut server. The lower
-  latency the better, due to the connection being over TCP.
-- Use as many threads (`-c` flag) as the server, your connection and your
-  machine allows.
+
+- Use a wired connection. Most Pixelflut setups at CCC events nowadays block all wireless traffic anyways.
+- Use a LAN connection closely linked to the pixelflut server. The lower latency the better, due to the connection being over TCP.
+- Use as many threads (`-c` flag) as the server, your connection and your machine allows. Many servers at events heavily limit the connection count per IP, e.g. one of the GPN21 servers had a limit of 1 connection/IP and the 38c3 server had a limit of 2 connections/IP.
 - Paint a smaller image (`-w`, `-h` flags).
-- Paint in an area on the screen, where the least other things are pained.
-- Use multiple machines (servers) with multiple `pixelpwnr` instances to push
-  pixels to the screen.
+- Paint in an area on the screen where the least other things are painted.
+- Use multiple machines with multiple `hyperflut` instances to push pixels to the screen.
 
-## Help
+Performance improvements over other implementations that have been implemented in hyperflut:
 
-```text
-$ pixelpwnr --help
-
-Insanely fast pixelflut client for images and animations
-
-Usage: pixelpwnr [OPTIONS] --image <PATH>... <HOST>
-
-Arguments:
-  <HOST>  The host to pwn "host:port"
-
-Options:
-      --help             Show this help
-  -i, --image <PATH>...  Image path(s)
-  -w, --width <PIXELS>   Draw width [default: screen width]
-  -h, --height <PIXELS>  Draw height [default: screen height]
-  -x <PIXELS>            Draw X offset [default: 0]
-  -y <PIXELS>            Draw Y offset [default: 0]
-  -c, --count <COUNT>    Number of concurrent threads [default: number of CPUs]
-  -r, --fps <RATE>       Frames per second with multiple images [default: 1]
-  -b, --binary           Use binary mode to set pixels (`PB` protocol extension) [default: off]
-  -f, --flush <ENABLED>  Flush socket after each pixel [default: true] [default: true] [possible values: true, false]
-  -V, --version          Print version
-```
-
-## Relevant projects
-
-- [pixelpwnr-server][pixelpwnr-server]: server
-- [pixelpwnr-cast][pixelpwnr-cast]: cast your screen to a pixelflut server
+- Separated handling of image decoding and processing versus painting.
+- Arbitrarily multithreaded painting. This is only an advantage on servers that allow multiple connections.
+- Pixelflut command buffering. For static images, this vastly improves performance even over pixelpwnr, easily saturating multi-gigabit links with one or two painter threads.
+- Discarding of transparent pixels. In combination with video processing in GStreamer, this allows you to filter out only the relevant pixels and draw large-scale graphics with little bandwidth requirements.
 
 ## License
-This project is released under the GNU GPL-3.0 license.
-Check out the [LICENSE](LICENSE) file for more information.
 
+This project is released under the GNU GPL-3.0 license. Check out the [LICENSE](LICENSE) file for more information.
 
-[34C3]: https://events.ccc.de/congress/2017/wiki/index.php/Main_Page
-[pixelflut]: https://cccgoe.de/wiki/Pixelflut
-[pixelflut-video]: https://vimeo.com/92827556/
-[pixelpwnr-cast]: https://github.com/timvisee/pixelpwnr-cast
-[pixelpwnr-server]: https://github.com/timvisee/pixelpwnr-server
-[rust]: https://www.rust-lang.org/
-[rustup]: https://rustup.rs/
+Since the GPL’d code from pixelpwnr cannot be relicensed, unfortunately I cannot offer a different license than this. However, all source files completely written by me are available under the Public Domain [Unlicense](UNLICENSE), this is noted in the file’s header comment when applicable.
