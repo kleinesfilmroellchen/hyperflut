@@ -1,4 +1,6 @@
 //! Gstreamer support.
+//! 
+//! This file is licensed under the Unlicense.
 
 use anyhow::{anyhow, Error};
 use derive_more::derive::{Display, Error};
