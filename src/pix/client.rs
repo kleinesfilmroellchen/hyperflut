@@ -26,19 +26,15 @@ const PIX_SERVER_SIZE_REGEX: &str = r"^(?i)\s*SIZE\s+([[:digit:]]+)\s+([[:digit:
 pub struct Client {
     stream: BufStream<TcpStream>,
 
-    /// Whether to use binary mode (PB) instead of (PX).
-    binary: bool,
-
     /// Whether to flush the stream after each pixel.
     flush: bool,
 }
 
 impl Client {
     /// Create a new client instance.
-    pub fn new(stream: TcpStream, binary: bool, flush: bool) -> Client {
+    pub fn new(stream: TcpStream, flush: bool) -> Client {
         Client {
             stream: BufStream::new(stream),
-            binary,
             flush,
         }
     }
@@ -47,35 +43,18 @@ impl Client {
     pub fn connect(
         host: String,
         addr: Option<impl ToSocketAddrs>,
-        binary: bool,
         flush: bool,
     ) -> Result<Client, Error> {
         // Create a new stream, and instantiate the client
-        Ok(Client::new(create_stream(host, addr)?, binary, flush))
+        Ok(Client::new(create_stream(host, addr)?, flush))
     }
 
     /// Write a pixel to the given stream.
     pub fn write_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<(), Error> {
-        if self.binary {
-            let mut data = [
-                b'P', b'B',
-                // these values will be filled in using to_le_bytes in the next step
-                // to account for the machines endianness
-                0, // x LSB
-                0, // x MSB
-                0, // y LSB
-                0, // y MSB
-                color.r, color.g, color.b, color.a,
-            ];
-            data[2..4].copy_from_slice(&x.to_le_bytes());
-            data[4..6].copy_from_slice(&y.to_le_bytes());
-            self.write_command(&data, false)
-        } else {
-            self.write_command(
-                format!("PX {} {} {}", x, y, color.as_hex()).as_bytes(),
-                true,
-            )
-        }
+        self.write_command(
+            format!("PX {} {} {}", x, y, color.as_hex()).as_bytes(),
+            true,
+        )
     }
 
     /// Read the size of the screen.

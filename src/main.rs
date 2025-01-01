@@ -49,7 +49,6 @@ fn start(arg_handler: &ArgHandler) {
         arg_handler.count(),
         size,
         arg_handler.offset(),
-        arg_handler.binary(),
         arg_handler.flush(),
         image_manager.image_count() == 1,
     );
@@ -83,7 +82,6 @@ fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16), Error> {
     let size = Client::connect(
         arg_handler.host().to_string(),
         arg_handler.address().clone(),
-        false,
         false,
     )?
     .read_screen_size()?;

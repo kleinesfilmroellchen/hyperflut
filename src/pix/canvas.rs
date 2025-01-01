@@ -29,7 +29,6 @@ impl Canvas {
         painter_count: usize,
         size: (u16, u16),
         offset: (u16, u16),
-        binary: bool,
         flush: bool,
         should_buffer: bool,
     ) -> Canvas {
@@ -48,14 +47,14 @@ impl Canvas {
         println!("Starting painter threads...");
 
         // Spawn some painters
-        canvas.spawn_painters(binary, flush);
+        canvas.spawn_painters(flush);
 
         // Return the canvas
         canvas
     }
 
     /// Spawn the painters for this canvas
-    fn spawn_painters(&mut self, binary: bool, flush: bool) {
+    fn spawn_painters(&mut self, flush: bool) {
         // Spawn some painters
         for i in 0..self.painter_count {
             // Determine the slice width
@@ -65,12 +64,12 @@ impl Canvas {
             let painter_area = Rect::from((i as u16) * width, 0, width, self.size.1);
 
             // Spawn the painter
-            self.spawn_painter(painter_area, binary, flush);
+            self.spawn_painter(painter_area, flush);
         }
     }
 
     /// Spawn a single painter in a thread.
-    fn spawn_painter(&mut self, area: Rect, binary: bool, flush: bool) {
+    fn spawn_painter(&mut self, area: Rect, flush: bool) {
         // Get the host that will be used
         let host = self.host.to_string();
         let address = self.address.clone();
@@ -89,7 +88,7 @@ impl Canvas {
 
             loop {
                 // Connect
-                match Client::connect(host.clone(), address.clone(), binary, flush) {
+                match Client::connect(host.clone(), address.clone(), flush) {
                     Ok(client) => {
                         painter.set_client(Some(client));
 

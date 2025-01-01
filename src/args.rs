@@ -43,10 +43,6 @@ pub struct Arguments {
     #[arg(short = 'r', long, value_name = "RATE", default_value_t = 1)]
     fps: u32,
 
-    /// Use binary mode to set pixels (`PB` protocol extension) [default: off]
-    #[arg(short, long, alias = "bin")]
-    binary: bool,
-
     /// Image scaling algorithm to use (dev: )
     #[arg(short, long, value_name="SCALING", default_value="gaussian", value_parser=parse_filter_type)]
     scaling: FilterType,
@@ -173,11 +169,6 @@ impl ArgHandler {
     /// Get the FPS.
     pub fn fps(&self) -> u32 {
         self.data.fps
-    }
-
-    /// Whether to use binary mode.
-    pub fn binary(&self) -> bool {
-        self.data.binary
     }
 
     /// Whether to flush after each pixel.
