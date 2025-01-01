@@ -4,6 +4,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use image::DynamicImage;
+use log::{debug, error, info};
 
 use crate::painter::handle::Handle;
 use crate::painter::painter::Painter;
@@ -44,7 +45,7 @@ impl Canvas {
         };
 
         // Show a status message
-        println!("Starting painter threads...");
+        debug!("Starting painter threads...");
 
         // Spawn some painters
         canvas.spawn_painters(flush);
@@ -95,19 +96,19 @@ impl Canvas {
                         // Keep painting
                         loop {
                             if let Err(e) = painter.work(&rx) {
-                                println!("Painter error: {}", e);
+                                error!("Painter error: {}", e);
                                 break;
                             }
                         }
                     }
                     Err(e) => {
-                        eprintln!("Painter failed to connect: {}", e);
+                        error!("Painter failed to connect: {}", e);
                     }
                 };
 
                 // Sleep for half a second before restarting the painter
                 sleep(Duration::from_millis(500));
-                println!("Restarting failed painter...");
+                info!("Restarting failed painter...");
             }
         });
 

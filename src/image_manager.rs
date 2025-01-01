@@ -1,5 +1,6 @@
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
+use log::info;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
@@ -9,10 +10,7 @@ use std::time::Duration;
 
 use crate::pix::canvas::Canvas;
 use image::imageops::FilterType;
-use image::{
-    AnimationDecoder, DynamicImage, Frame, Frames, GenericImageView, ImageError, Pixel, Rgba,
-    RgbaImage,
-};
+use image::{AnimationDecoder, DynamicImage, GenericImageView, Pixel, Rgba, RgbaImage};
 
 /// How to preprocess a sequence of images.
 #[derive(Copy, Clone, Debug, Default)]
@@ -111,7 +109,7 @@ impl ImageManager {
     ) -> ImageManager {
         // Show a status message
         if !paths.is_empty() {
-            println!("Load and process {} image(s)...", paths.len());
+            info!("Load and process {} image(s)...", paths.len());
         }
 
         // Load the images from the paths
@@ -123,7 +121,7 @@ impl ImageManager {
         );
 
         // We succeeded
-        println!("All images have been loaded successfully");
+        info!("All images have been loaded successfully");
 
         image_manager
     }

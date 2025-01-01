@@ -2,10 +2,16 @@
 //!
 //! This file is licensed under the Unlicense.
 
+use std::sync::LazyLock;
+
 use anyhow::{anyhow, Result};
 use derive_more::derive::{Display, Error};
-use gstreamer::{element_error, glib, prelude::*};
+use gstreamer::{
+    element_error, glib, prelude::*, DebugCategory, DebugGraphDetails, DebugLevel, DebugMessage,
+    LoggedObject,
+};
 use image::{DynamicImage, RgbaImage};
+use log::{debug, info, Level};
 
 use crate::pix::canvas::Canvas;
 
@@ -35,12 +41,13 @@ impl GstSink {
     }
 
     pub fn work(&mut self) -> Result<()> {
+        info!("GStreamer pipeline starting...");
         self.pipeline.set_state(gstreamer::State::Playing)?;
 
         let bus = self
             .pipeline
             .bus()
-            .expect("Pipeline without bus. Shouldn't happen!");
+            .ok_or(anyhow!("Pipeline without bus. Shouldn't happen!"))?;
 
         for msg in bus.iter_timed(gstreamer::ClockTime::NONE) {
             use gstreamer::MessageView;
@@ -77,11 +84,18 @@ fn create_pipeline(
     mut canvas: Canvas,
 ) -> Result<gstreamer::Pipeline> {
     gstreamer::init()?;
-    gstreamer::log::set_default_threshold(gstreamer::DebugLevel::Warning);
+    gstreamer::log::remove_default_log_function();
+    gstreamer::log::add_log_function(gstreamer_log);
+    // Ignore memdump messages as they create unnecessary load outside of GStreamer element debugging.
+    gstreamer::log::set_default_threshold(gstreamer::DebugLevel::Trace);
     gstreamer::log::set_active(true);
 
     let pipeline = gstreamer::Pipeline::default();
     let bin = gstreamer::parse::bin_from_description(pipeline_description, false)?;
+    debug!(
+        "Built user-defined pipeline: {}",
+        bin.debug_to_dot_data(DebugGraphDetails::ALL)
+    );
     // Convert from any kind of pixel format.
     let videoconvert = gstreamer::ElementFactory::make("videoconvert").build()?;
     // Rescale any size of video to the size used for the pixelflut output.
@@ -115,6 +129,7 @@ fn create_pipeline(
         .find(|el| el.name() == "pixelflut_out");
     if let Some(output_element) = output_element {
         output_element.link(&videoscale)?;
+        debug!("Linked to pixelflut_out sink element {:?}", output_element);
     } else {
         return Err(anyhow!("No element named 'pixelflut_out' found. Please set the property 'name=pixelflut_out' on your last source element."));
     }
@@ -154,6 +169,7 @@ fn create_pipeline(
                 // Unfortunately, we have to copy the buffer contents here since the GStreamer buffer won’t be around for long enough.
                 let maybe_image = RgbaImage::from_raw(width as u32, height as u32, map.to_vec());
                 if let Some(image) = maybe_image {
+                    debug!("Received raw image, sending to painters...",);
                     canvas.update_image(&mut DynamicImage::from(image));
                 }
 
@@ -163,6 +179,38 @@ fn create_pipeline(
     );
 
     pipeline.set_state(gstreamer::State::Ready)?;
+    info!(
+        "GStreamer pipeline successfully created with {} elements",
+        pipeline.iterate_elements().into_iter().count()
+    );
 
     Ok(pipeline)
+}
+
+fn gstreamer_debug_level_to_log_level(level: DebugLevel) -> Option<Level> {
+    match level {
+        DebugLevel::Error => Some(Level::Error),
+        DebugLevel::Warning => Some(Level::Warn),
+        DebugLevel::Info => Some(Level::Info),
+        DebugLevel::Fixme | DebugLevel::Debug => Some(Level::Debug),
+        DebugLevel::Memdump | DebugLevel::Log | DebugLevel::Trace => Some(Level::Trace),
+        _ => None,
+    }
+}
+
+static GSTREAMER_PREFIX: LazyLock<String> = LazyLock::new(|| "gstreamer::".to_owned());
+
+fn gstreamer_log(
+    category: DebugCategory,
+    level: DebugLevel,
+    _file: &glib::GStr,
+    _function: &glib::GStr,
+    _line: u32,
+    _object: Option<&LoggedObject>,
+    message: &DebugMessage,
+) {
+    if let Some(log_level) = gstreamer_debug_level_to_log_level(level) {
+        let target = GSTREAMER_PREFIX.clone() + category.name();
+        log::log!(target: &target, log_level, "({}) {}", level.name().trim(), message.get().unwrap_or_default());
+    }
 }

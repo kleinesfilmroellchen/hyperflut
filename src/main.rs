@@ -10,11 +10,21 @@ mod rect;
 use anyhow::Result;
 use args::ArgHandler;
 use image_manager::ImageManager;
+use log::info;
+use log::warn;
+use log::LevelFilter;
 use pix::canvas::Canvas;
 use pix::client::Client;
 
 /// Main application entrypoint.
 fn main() {
+    env_logger::Builder::new()
+        .format_timestamp_secs()
+        .filter_level(LevelFilter::Info)
+        .filter_module("gstreamer", LevelFilter::Warn)
+        .parse_default_env()
+        .init();
+
     // Parse CLI arguments
     let arg_handler = ArgHandler::parse();
 
@@ -25,7 +35,7 @@ fn main() {
 /// Start pixelfluting.
 fn start(arg_handler: &ArgHandler) {
     // Start
-    println!("Starting... (use CTRL+C to stop)");
+    warn!("Starting... (use CTRL+C to stop)");
 
     // Gather facts about the host
     let screen_size = gather_host_facts(arg_handler).ok();
@@ -56,11 +66,11 @@ fn start(arg_handler: &ArgHandler) {
     if let Some(pipeline) = arg_handler.pipeline() {
         let sink = gst::GstSink::new(size.0, size.1, &pipeline, canvas);
         match sink {
-            Err(why) => eprintln!("error setting up GStreamer: {}", why),
+            Err(why) => log::error!("error setting up GStreamer: {}", why),
             Ok(mut sink) => {
                 let result = sink.work();
                 if let Err(why) = result {
-                    eprintln!("error running GStreamer: {why}");
+                    log::error!("error running GStreamer: {why}");
                 }
             }
         }
@@ -86,7 +96,7 @@ fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16)> {
     .read_screen_size()?;
 
     // Print status
-    println!("Gathered screen size: {}x{}", size.0, size.1);
+    info!("Gathered screen size: {}x{}", size.0, size.1);
 
     Ok(size)
 }

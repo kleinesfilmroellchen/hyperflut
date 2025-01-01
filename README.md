@@ -74,6 +74,8 @@ cargo run --release -- --help
 ./target/release/hyperflut --help
 ```
 
+You can configure hyperflut’s logging by using the RUST_LOG environment variable. Its general syntax is [described here](https://docs.rs/env_logger/latest/env_logger/#example). All GStreamer logging categories are nested under the `gstreamer` logging module, so e.g. to enable debug output for GStreamer’s Video4Linux2 elements you could set `RUST_LOG=gstreamer::v4l2=DEBUG`.
+
 ## Performance & speed optimization
 
 There are many things that affect how quickly pixels can be painted on a

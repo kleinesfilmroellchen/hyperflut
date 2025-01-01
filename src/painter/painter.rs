@@ -1,4 +1,5 @@
 use anyhow::Result;
+use log::{error, info};
 use std::fmt::Write;
 use std::sync::mpsc::Receiver;
 
@@ -45,10 +46,13 @@ impl Painter {
             // Show a warning
 
             // Wait for the first image to come in.
-            self.set_image(img_receiver.recv()?);
+            match img_receiver.recv() {
+                Ok(img) => self.set_image(img),
+                Err(why) => error!("receiving first image failed: {why}"),
+            }
 
             // We may now continue
-            println!("Painter thread received an image, painting...");
+            info!("Painter thread received an image, painting...");
         }
 
         if let Ok(image) = img_receiver.try_recv() {
