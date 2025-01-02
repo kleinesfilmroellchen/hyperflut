@@ -10,76 +10,7 @@ use std::time::Duration;
 
 use crate::pix::canvas::Canvas;
 use image::imageops::FilterType;
-use image::{AnimationDecoder, DynamicImage, GenericImageView, Pixel, Rgba, RgbaImage};
-
-/// How to preprocess a sequence of images.
-#[derive(Copy, Clone, Debug, Default)]
-pub enum ImagePreprocessing {
-    /// No preprocessing.
-    #[default]
-    None,
-    /// Take difference, and set all equal pixels to transparent.
-    Diff,
-    /// Cut off dark pixels and replace them with transparent.
-    Cutoff,
-}
-
-impl ImagePreprocessing {
-    /// Execute the preprocessing.
-    pub fn execute(
-        self,
-        images: Vec<(DynamicImage, Option<Duration>)>,
-    ) -> Vec<(DynamicImage, Option<Duration>)> {
-        match self {
-            Self::None => images,
-            Self::Diff => {
-                if images.is_empty() {
-                    return Vec::new();
-                }
-                let mut diff_images = vec![images[0].clone()];
-
-                let mut last_image = images[0].0.to_rgba8();
-                for (image, duration) in images.into_iter().skip(1) {
-                    let image = image.to_rgba8();
-                    let difference =
-                        RgbaImage::from_par_fn(image.width(), image.height(), |x, y| {
-                            let this = image.get_pixel(x, y);
-                            let last = last_image.get_pixel(x, y);
-                            if this == last {
-                                Rgba::<u8>([0, 0, 0, 0])
-                            } else {
-                                *this
-                            }
-                        });
-                    diff_images.push((DynamicImage::from(difference), duration));
-                    last_image = image;
-                }
-
-                diff_images
-            }
-            Self::Cutoff => images
-                .into_iter()
-                .map(|(image, duration)| {
-                    (
-                        DynamicImage::from(RgbaImage::from_par_fn(
-                            image.width(),
-                            image.height(),
-                            |x, y| {
-                                let pixel = image.get_pixel(x, y);
-                                if pixel.to_luma().0[0] < 127 {
-                                    Rgba::<u8>([0, 0, 0, 0])
-                                } else {
-                                    pixel
-                                }
-                            },
-                        )),
-                        duration,
-                    )
-                })
-                .collect(),
-        }
-    }
-}
+use image::{AnimationDecoder, DynamicImage};
 
 /// A manager that manages all images to print.
 pub struct ImageManager {
@@ -105,7 +36,6 @@ impl ImageManager {
         paths: &[&str],
         size: (u16, u16),
         scaling_filter: FilterType,
-        preprocessing: ImagePreprocessing,
     ) -> ImageManager {
         // Show a status message
         if !paths.is_empty() {
@@ -116,7 +46,7 @@ impl ImageManager {
         let image_manager = ImageManager::from(
             paths
                 .par_iter()
-                .flat_map(|path| load_image(path, size, scaling_filter, preprocessing))
+                .flat_map(|path| load_image(path, size, scaling_filter))
                 .collect(),
         );
 
@@ -185,7 +115,6 @@ fn load_image(
     path: &str,
     size: (u16, u16),
     scaling_filter: FilterType,
-    preprocessing: ImagePreprocessing,
 ) -> Vec<(DynamicImage, Option<Duration>)> {
     // Create a path instance
     let path = Path::new(&path);
@@ -243,8 +172,7 @@ fn load_image(
     };
 
     // preprocess and resize images to fit the screen
-    preprocessing
-        .execute(images)
+    images
         .into_par_iter()
         .map(|(image, frame_delay)| {
             (

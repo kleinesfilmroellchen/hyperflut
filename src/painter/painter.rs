@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Result;
 use log::{error, info};
 use std::fmt::Write;
@@ -60,7 +61,7 @@ impl Painter {
         }
 
         // Get an RGB image
-        let image = self.image.as_mut().unwrap().to_rgba8();
+        let image = self.image.as_mut().ok_or(anyhow!("no image"))?.to_rgba8();
 
         if !self.should_buffer || self.buffer.len() == 0 {
             // Loop through all the pixels, and set their color

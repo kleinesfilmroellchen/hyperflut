@@ -44,6 +44,21 @@ hyperflut 127.0.0.1:8080 -i *.png --fps 5 -c 4 -w 400 -h 400 -x 100 -y 100
 
 Use the `--help` flag for all available options.
 
+### Useful GStreamer commands
+
+If you have GStreamer-enabled hyperflut, you can use a pipeline just like in `gst-launch` to create very involved effects. The only requirement is that some kind of raw video (video/x-raw) is sourced from an element named `pixelflut_out`. While any framerate is accepted, lower framerates (<20) will generally yield better results due to general performance restrictions. Note that any X input sources do not work thanks to missing a XInitThreads() call; I couldn’t get it to work even with this so hyperflut doesn’t run this call.
+
+Here are some useful examples to get you started.
+
+```gstreamer
+# Stream any video at 10fps (the last videoconvert node is a dummy element)
+filesrc location=my_video.mkv ! decodebin ! videorate ! video/x-raw,framerate=10/1 ! videoconvert name=pixelflut_out
+# Make black and dark elements of a video transparent, increasing drawing efficiency
+filesrc location=my_video.mkv ! decodebin ! videorate ! videoconvert ! video/x-raw,framerate=10/1 ! alpha method=custom target-b=0 target-r=0 target-g=0 black-sensitivity=128 white-sensitivity=0 name=pixelflut_out
+# Stream some Video4Linux2 source, such as your camera or a loopback device with input video from ffmpeg, with zebra stripes on bright areas
+v4l2src device=/dev/videoXXX ! videorate ! video/x-raw,framerate=10/1 ! zebrastripe name=pixelflut_out
+```
+
 ## Installation
 
 Hyperflut is written in Rust and built with Cargo. It uses a stable toolchain and runs on at least the latest Rust version.

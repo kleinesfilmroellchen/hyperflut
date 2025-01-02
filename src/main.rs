@@ -44,12 +44,8 @@ fn start(arg_handler: &ArgHandler) {
     let size = arg_handler.size(screen_size);
 
     // Load the image manager
-    let mut image_manager = ImageManager::load(
-        &arg_handler.image_paths(),
-        size,
-        arg_handler.scaling(),
-        arg_handler.image_preprocessing(),
-    );
+    let mut image_manager =
+        ImageManager::load(&arg_handler.image_paths(), size, arg_handler.scaling());
 
     // Create a new pixelflut canvas
     let mut canvas = Canvas::new(
