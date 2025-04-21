@@ -1,3 +1,5 @@
+use std::net::Ipv6Addr;
+use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::thread::sleep;
@@ -8,10 +10,22 @@ use log::{debug, error, info};
 
 use crate::painter::handle::Handle;
 use crate::painter::painter::Painter;
-use crate::pix::client::Client;
+use crate::pix::client::{Pingv6Client, TextTcpClient};
 use crate::rect::Rect;
 
-/// A pixflut instance
+use super::client::PixelClient;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum, Default)]
+pub enum ClientType {
+    #[default]
+    TextTcp,
+    // BinaryTcp,
+    PingV6,
+    // Pingxelflut,
+    // TextUdp,
+}
+
+/// A pixelflut instance
 pub struct Canvas {
     host: String,
     address: Option<String>,
@@ -19,12 +33,14 @@ pub struct Canvas {
     painter_handles: Vec<Handle>,
     size: (u16, u16),
     offset: (u16, u16),
+    client_type: ClientType,
     should_buffer: bool,
 }
 
 impl Canvas {
     /// Create a new pixelflut canvas.
     pub fn new(
+        client_type: ClientType,
         host: &str,
         address: &Option<String>,
         painter_count: usize,
@@ -35,6 +51,7 @@ impl Canvas {
     ) -> Canvas {
         // Initialize the object
         let mut canvas = Canvas {
+            client_type,
             host: host.to_string(),
             address: address.clone(),
             painter_count,
@@ -79,32 +96,41 @@ impl Canvas {
         let offset = (self.offset.0, self.offset.1);
         let should_buffer = self.should_buffer;
 
+        let target_network = if self.client_type == ClientType::PingV6 {
+            Ipv6Addr::from_str(&self.host).ok()
+        } else {
+            None
+        };
+        let client_type = self.client_type;
+
         // Create a channel to push new images
         let (tx, rx): (Sender<DynamicImage>, Receiver<DynamicImage>) = mpsc::channel();
 
         // Create the painter thread
         let thread = thread::spawn(move || {
-            // Create the painter
-            let mut painter = Painter::new(None, area, offset, None, should_buffer);
-
             loop {
-                // Connect
-                match Client::connect(host.clone(), address.clone(), flush) {
-                    Ok(client) => {
-                        painter.set_client(Some(client));
-
-                        // Keep painting
-                        loop {
-                            if let Err(e) = painter.work(&rx) {
-                                error!("Painter error: {}", e);
-                                break;
+                match client_type {
+                    ClientType::PingV6 => {
+                        let client = Pingv6Client::new(target_network.unwrap());
+                        Self::run_painter(client, area, offset, &rx);
+                    }
+                    ClientType::TextTcp => {
+                        // Connect
+                        match TextTcpClient::connect(
+                            host.clone(),
+                            address.clone(),
+                            flush,
+                            should_buffer,
+                        ) {
+                            Ok(client) => {
+                                Self::run_painter(client, area, offset, &rx);
                             }
-                        }
+                            Err(e) => {
+                                error!("Painter failed to connect: {}", e);
+                            }
+                        };
                     }
-                    Err(e) => {
-                        error!("Painter failed to connect: {}", e);
-                    }
-                };
+                }
 
                 // Sleep for half a second before restarting the painter
                 sleep(Duration::from_millis(500));
@@ -114,6 +140,22 @@ impl Canvas {
 
         // Create a new painter handle, pust it to the list
         self.painter_handles.push(Handle::new(thread, area, tx));
+    }
+
+    fn run_painter(
+        client: impl PixelClient,
+        area: Rect,
+        offset: (u16, u16),
+        rx: &Receiver<DynamicImage>,
+    ) {
+        let mut painter = Painter::new(Some(client), area, offset, None);
+
+        loop {
+            if let Err(e) = painter.work(rx) {
+                error!("Painter error: {}", e);
+                break;
+            }
+        }
     }
 
     // Update the image that is being rendered for all painters.

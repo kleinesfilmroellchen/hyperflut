@@ -2,6 +2,8 @@ use anyhow::{anyhow, Result};
 use clap::Parser;
 use image::imageops::FilterType;
 
+use crate::pix::canvas::ClientType;
+
 #[derive(Parser)]
 #[command(author, version, about, disable_help_flag = true)]
 pub struct Arguments {
@@ -11,7 +13,7 @@ pub struct Arguments {
     #[clap(long, action = clap::ArgAction::HelpLong)]
     help: Option<bool>,
 
-    /// The host to pwn "host:port"
+    /// The host to pwn "host:port" (or IP network for pingxelflutv6)
     host: String,
 
     /// The source address to bind to
@@ -49,6 +51,10 @@ pub struct Arguments {
     /// Flush socket after each pixel [default: true]
     #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
     flush: bool,
+
+    /// Pixel sending backend (protocol) to use.
+    #[arg(long, value_name="BACKEND", default_value_t, value_enum)]
+    backend: ClientType,
 }
 
 #[derive(Parser)]
@@ -135,10 +141,10 @@ impl ArgHandler {
         (
             self.data
                 .width
-                .unwrap_or(def.expect("No screen width set or known").0),
+                .unwrap_or_else(|| def.expect("No screen width set or known").0),
             self.data
                 .height
-                .unwrap_or(def.expect("No screen height set or known").1),
+                .unwrap_or_else(|| def.expect("No screen height set or known").1),
         )
     }
 
@@ -155,5 +161,9 @@ impl ArgHandler {
     /// Whether to flush after each pixel.
     pub fn flush(&self) -> bool {
         self.data.flush
+    }
+
+    pub fn backend(&self) -> ClientType {
+        self.data.backend
     }
 }

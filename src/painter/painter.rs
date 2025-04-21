@@ -1,41 +1,35 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use log::{error, info};
-use std::fmt::Write;
 use std::sync::mpsc::Receiver;
 
 use image::{DynamicImage, Pixel};
 
 use crate::color::Color;
-use crate::pix::client::Client;
+use crate::pix::client::PixelClient;
 use crate::rect::Rect;
 
 /// A painter that paints on a pixelflut panel.
-pub struct Painter {
-    client: Option<Client>,
+pub struct Painter<T: PixelClient> {
+    client: Option<T>,
     area: Rect,
     offset: (u16, u16),
     image: Option<DynamicImage>,
-    buffer: String,
-    should_buffer: bool,
 }
 
-impl Painter {
+impl<T: PixelClient> Painter<T> {
     /// Create a new painter.
     pub fn new(
-        client: Option<Client>,
+        client: Option<T>,
         area: Rect,
         offset: (u16, u16),
         image: Option<DynamicImage>,
-        should_buffer: bool,
-    ) -> Painter {
-        Painter {
+    ) -> Self {
+        Self {
             client,
             area,
             offset,
             image,
-            buffer: String::new(),
-            should_buffer,
         }
     }
 
@@ -61,15 +55,17 @@ impl Painter {
         }
 
         // Get an RGB image
-        let image = self.image.as_mut().ok_or(anyhow!("no image"))?.to_rgba8();
+        let mut image = self.image.as_mut().ok_or(anyhow!("no image"))?.to_rgba8();
+        let mut updated_image = false;
 
-        if !self.should_buffer || self.buffer.len() == 0 {
+        if let Some(client) = &mut self.client {
             // Loop through all the pixels, and set their color
             for x in 0..self.area.w {
                 for y in 0..self.area.h {
                     // Update the image to paint
-                    if let Ok(image) = img_receiver.try_recv() {
-                        self.set_image(image);
+                    if let Ok(new_image) = img_receiver.try_recv() {
+                        image = new_image.into();
+                        updated_image = true;
                     }
 
                     // Get the pixel at this location
@@ -86,32 +82,21 @@ impl Painter {
                     let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
 
                     // Set the pixel
-                    if self.should_buffer {
-                        writeln!(
-                            &mut self.buffer,
-                            "PX {} {} {}",
-                            x + self.area.x + self.offset.0,
-                            y + self.area.y + self.offset.1,
-                            color.as_hex()
-                        )
-                        .unwrap();
-                    } else {
-                        if let Some(client) = &mut self.client {
-                            client.write_pixel(
-                                x + self.area.x + self.offset.0,
-                                y + self.area.y + self.offset.1,
-                                color,
-                            )?;
-                        }
-                    }
+                    client.send_pixel(
+                        x + self.area.x + self.offset.0,
+                        y + self.area.y + self.offset.1,
+                        color,
+                    )?;
                 }
             }
         }
+        // make sure image is written back
+        if updated_image {
+            self.set_image(image.into());
+        }
 
-        if self.should_buffer {
-            if let Some(client) = &mut self.client {
-                client.write_command(self.buffer.as_bytes(), true)?;
-            }
+        if let Some(client) = &mut self.client {
+            client.flush_pixels()?;
         }
 
         // Everything seems to be ok
@@ -121,11 +106,9 @@ impl Painter {
     /// Update the image that should be painted
     pub fn set_image(&mut self, image: DynamicImage) {
         self.image = Some(image);
-        self.buffer.clear();
-    }
 
-    /// Update the client.
-    pub fn set_client(&mut self, client: Option<Client>) {
-        self.client = client;
+        if let Some(client) = &mut self.client {
+            client.clear_buffers();
+        }
     }
 }

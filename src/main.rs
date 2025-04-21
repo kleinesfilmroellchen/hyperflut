@@ -14,7 +14,7 @@ use log::info;
 use log::warn;
 use log::LevelFilter;
 use pix::canvas::Canvas;
-use pix::client::Client;
+use pix::client::TextTcpClient;
 
 /// Main application entrypoint.
 fn main() {
@@ -49,6 +49,7 @@ fn start(arg_handler: &ArgHandler) {
 
     // Create a new pixelflut canvas
     let mut canvas = Canvas::new(
+        arg_handler.backend(),
         arg_handler.host(),
         &arg_handler.address(),
         arg_handler.count(),
@@ -84,9 +85,10 @@ fn start(arg_handler: &ArgHandler) {
 /// Gather important facts about the host.
 fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16)> {
     // Set up a client, and get the screen size
-    let size = Client::connect(
+    let size = TextTcpClient::connect(
         arg_handler.host().to_string(),
         arg_handler.address().clone(),
+        false,
         false,
     )?
     .read_screen_size()?;

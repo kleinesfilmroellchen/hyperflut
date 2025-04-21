@@ -12,6 +12,7 @@ hyperflut is a hard fork of [pixelpwnr](https://timvisee.com/projects/pixelpwnr/
 - Automatic image sizing and formatting
 - Faster than most other clients :-)
 - Portable; the image and animation mode supports any std environment
+- Supports multiple backend formats (currently: classical text-based TCP and pingxelflut-v6, possibly upcoming: pingxelflut, UDP, binary TCP/UDP)
 
 ## Usage
 

@@ -1,5 +1,6 @@
+use std::fmt::Write as _;
 use std::io::prelude::*;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{Ipv6Addr, SocketAddr, TcpStream, ToSocketAddrs};
 
 use anyhow::{anyhow, Result};
 use bufstream_fresh::BufStream;
@@ -7,6 +8,7 @@ use net2::TcpBuilder;
 use regex::Regex;
 
 use crate::color::Color;
+use crate::painter::icmp::{EchoDirection, Icmp};
 
 // The default buffer size for reading the client stream.
 // - Big enough so we don't have to expand
@@ -16,33 +18,60 @@ const CMD_READ_BUFFER_SIZE: usize = 32;
 // The response format of the screen size from a pixelflut server.
 const PIX_SERVER_SIZE_REGEX: &str = r"^(?i)\s*SIZE\s+([[:digit:]]+)\s+([[:digit:]]+)\s*$";
 
-/// A pixelflut client.
+/// A generic pixel sending client.
+/// The client handles outputting pixels via one of the multiple pixelflut protocol (variants).
+pub trait PixelClient {
+    /// Send a pixel with a given color at a certain position.
+    fn send_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()>;
+    /// Flush the pixels. For example, buffering transports may only actually send something once this method is called.
+    /// The recommendation is to call this function once per block that a painter is responsible for.
+    fn flush_pixels(&mut self) -> Result<()> {
+        Ok(())
+    }
+    /// Clear all internal buffers of the client in anticipation of new input.
+    fn clear_buffers(&mut self) {}
+}
+
+/// Classical TCP text-based pixelflut client.
 ///
 /// This client uses a stream to talk to a pixelflut panel.
 /// It allows to write pixels to the panel, and read some status.
 ///
 /// The client provides an interface for other logic to easily talk
 /// to the pixelflut panel.
-pub struct Client {
+pub struct TextTcpClient {
     stream: BufStream<TcpStream>,
 
     /// Whether to flush the stream after each pixel.
     flush: bool,
+
+    /// Buffering controls
+    buffer: String,
+    should_buffer: bool,
+    is_buffer_ready: bool,
 }
 
-impl Client {
+impl TextTcpClient {
     /// Create a new client instance.
-    pub fn new(stream: TcpStream, flush: bool) -> Client {
-        Client {
+    pub fn new(stream: TcpStream, flush: bool, should_buffer: bool) -> Self {
+        Self {
             stream: BufStream::with_capacities(128, 8 * 1024, stream),
             flush,
+            buffer: String::new(),
+            should_buffer: should_buffer,
+            is_buffer_ready: false,
         }
     }
 
     /// Create a new client instane from the given host, and connect to it.
-    pub fn connect(host: String, addr: Option<impl ToSocketAddrs>, flush: bool) -> Result<Client> {
+    pub fn connect(
+        host: String,
+        addr: Option<impl ToSocketAddrs>,
+        flush: bool,
+        should_buffer: bool,
+    ) -> Result<Self> {
         // Create a new stream, and instantiate the client
-        Ok(Client::new(create_stream(host, addr)?, flush))
+        Ok(Self::new(create_stream(host, addr)?, flush, should_buffer))
     }
 
     /// Write a pixel to the given stream.
@@ -114,10 +143,39 @@ impl Client {
     }
 }
 
-impl Drop for Client {
+impl Drop for TextTcpClient {
     /// Nicely drop the connection when the client is disconnected.
     fn drop(&mut self) {
         let _ = self.write_command(b"\nQUIT", true);
+    }
+}
+
+impl PixelClient for TextTcpClient {
+    fn send_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()> {
+        if self.should_buffer {
+            if !self.is_buffer_ready {
+                writeln!(&mut self.buffer, "PX {} {} {}", x, y, color.as_hex())?;
+            }
+        } else {
+            self.write_pixel(x, y, color)?;
+        }
+        Ok(())
+    }
+
+    fn flush_pixels(&mut self) -> Result<()> {
+        if self.should_buffer {
+            self.is_buffer_ready = true;
+            // reimplement write_command() for borrow checker reasons
+            self.stream.write_all(self.buffer.as_bytes())?;
+            self.stream.write_all(b"\n")?;
+            self.stream.flush()?;
+        }
+        Ok(())
+    }
+
+    fn clear_buffers(&mut self) {
+        self.is_buffer_ready = false;
+        self.buffer.clear();
     }
 }
 
@@ -131,4 +189,42 @@ fn create_stream(host: String, addr: Option<impl ToSocketAddrs>) -> Result<TcpSt
     }
     let stream = builder.connect(host)?;
     Ok(stream)
+}
+
+pub struct Pingv6Client {
+    target_network: [u16; 4],
+}
+
+impl Pingv6Client {
+    /// 'hf' (hyperflut)
+    const ID: u16 = 0x6866;
+
+    pub fn new(target_network: Ipv6Addr) -> Self {
+        Self {
+            target_network: target_network.segments()[0..4].try_into().unwrap(),
+        }
+    }
+}
+
+impl PixelClient for Pingv6Client {
+    fn send_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()> {
+        let target_address = [
+            self.target_network[0],
+            self.target_network[1],
+            self.target_network[2],
+            self.target_network[3],
+            x,
+            y,
+            ((color.r as u16) << 8) | color.g as u16,
+            (color.b as u16) << 8,
+        ];
+        // log::debug!("{}", Ipv6Addr::from(target_address));
+        let mut packet = Icmp::new(
+            SocketAddr::new(target_address.into(), 0),
+            Self::ID,
+            EchoDirection::Request,
+        );
+        let _ = packet.send()?;
+        Ok(())
+    }
 }
