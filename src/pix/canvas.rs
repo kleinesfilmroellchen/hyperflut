@@ -35,6 +35,7 @@ pub struct Canvas {
     offset: (u16, u16),
     client_type: ClientType,
     should_buffer: bool,
+    slowpaint: bool,
 }
 
 impl Canvas {
@@ -48,6 +49,7 @@ impl Canvas {
         offset: (u16, u16),
         flush: bool,
         should_buffer: bool,
+        slowpaint: bool,
     ) -> Canvas {
         // Initialize the object
         let mut canvas = Canvas {
@@ -59,6 +61,7 @@ impl Canvas {
             size,
             offset,
             should_buffer,
+            slowpaint,
         };
 
         // Show a status message
@@ -102,6 +105,7 @@ impl Canvas {
             None
         };
         let client_type = self.client_type;
+        let slowpaint = self.slowpaint;
 
         // Create a channel to push new images
         let (tx, rx): (Sender<DynamicImage>, Receiver<DynamicImage>) = mpsc::channel();
@@ -112,7 +116,7 @@ impl Canvas {
                 match client_type {
                     ClientType::PingV6 => {
                         let client = Pingv6Client::new(target_network.unwrap());
-                        Self::run_painter(client, area, offset, &rx);
+                        Self::run_painter(client, area, offset, &rx, slowpaint);
                     }
                     ClientType::TextTcp => {
                         // Connect
@@ -123,7 +127,7 @@ impl Canvas {
                             should_buffer,
                         ) {
                             Ok(client) => {
-                                Self::run_painter(client, area, offset, &rx);
+                                Self::run_painter(client, area, offset, &rx, slowpaint);
                             }
                             Err(e) => {
                                 error!("Painter failed to connect: {}", e);
@@ -147,8 +151,9 @@ impl Canvas {
         area: Rect,
         offset: (u16, u16),
         rx: &Receiver<DynamicImage>,
+        slowpaint: bool,
     ) {
-        let mut painter = Painter::new(Some(client), area, offset, None);
+        let mut painter = Painter::new(Some(client), area, offset, None, slowpaint);
 
         loop {
             if let Err(e) = painter.work(rx) {

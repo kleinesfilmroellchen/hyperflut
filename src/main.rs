@@ -56,7 +56,8 @@ fn start(arg_handler: &ArgHandler) {
         size,
         arg_handler.offset(),
         arg_handler.flush(),
-        image_manager.image_count() == 1,
+        image_manager.image_count() == 1 && !arg_handler.slowpaint(),
+        arg_handler.slowpaint(),
     );
 
     #[cfg(feature = "gst")]

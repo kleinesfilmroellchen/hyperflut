@@ -52,8 +52,12 @@ pub struct Arguments {
     #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
     flush: bool,
 
+    /// Paint super slowly.
+    #[arg(long)]
+    slowpaint: bool,
+
     /// Pixel sending backend (protocol) to use.
-    #[arg(long, value_name="BACKEND", default_value_t, value_enum)]
+    #[arg(long, value_name = "BACKEND", default_value_t, value_enum)]
     backend: ClientType,
 }
 
@@ -161,6 +165,11 @@ impl ArgHandler {
     /// Whether to flush after each pixel.
     pub fn flush(&self) -> bool {
         self.data.flush
+    }
+
+    /// Whether to paint slowly.
+    pub fn slowpaint(&self) -> bool {
+        self.data.slowpaint
     }
 
     pub fn backend(&self) -> ClientType {

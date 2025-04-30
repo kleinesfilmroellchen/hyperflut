@@ -32,11 +32,7 @@ impl ImageManager {
     }
 
     /// Instantiate the image manager, and load the images from the given paths.
-    pub fn load(
-        paths: &[&str],
-        size: (u16, u16),
-        scaling_filter: FilterType,
-    ) -> ImageManager {
+    pub fn load(paths: &[&str], size: (u16, u16), scaling_filter: FilterType) -> ImageManager {
         // Show a status message
         if !paths.is_empty() {
             info!("Load and process {} image(s)...", paths.len());
