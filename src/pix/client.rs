@@ -183,9 +183,24 @@ impl PixelClient for TextTcpClient {
 ///
 /// The stream is returned as result.
 fn create_stream(host: String, addr: Option<impl ToSocketAddrs>) -> Result<TcpStream> {
-    let builder = TcpBuilder::new_v4()?;
-    if let Some(addr) = addr {
-        builder.bind(addr)?;
+    let host_addr = host
+        .to_socket_addrs()?
+        .next()
+        .ok_or(anyhow!("invalid host {host}"))?;
+    let own_addr = addr.map(|addr| addr.to_socket_addrs()).transpose()?;
+    let mut builder = if host_addr.is_ipv4() {
+        TcpBuilder::new_v4()
+    } else {
+        TcpBuilder::new_v6()
+    }?;
+    if let Some(mut own_socket_addr) = own_addr {
+        let first_addr = own_socket_addr
+            .next()
+            .ok_or(anyhow!("invalid ToSocketAddrs"))?;
+        if first_addr.is_ipv4() {
+            builder = TcpBuilder::new_v4()?;
+        }
+        builder.bind(first_addr)?;
     }
     let stream = builder.connect(host)?;
     Ok(stream)
