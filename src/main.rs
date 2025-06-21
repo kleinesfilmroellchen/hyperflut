@@ -7,6 +7,10 @@ mod painter;
 mod pix;
 mod rect;
 
+mod lut {
+    include!(concat!(env!("OUT_DIR"), "/lut.rs"));
+}
+
 use anyhow::Result;
 use args::ArgHandler;
 use image_manager::ImageManager;

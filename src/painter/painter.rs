@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use anyhow::Result;
+use image::GenericImageView;
 use itertools::Itertools;
 use log::{error, info};
 use rand::seq::SliceRandom;
@@ -78,7 +79,9 @@ impl<T: PixelClient> Painter<T> {
                         image = new_image.into();
                         updated_image = true;
                     }
-                    let channels = image.get_pixel(x as u32, y as u32).channels();
+                    // SAFETY: The list above is generated from valid pixel indices only.
+                    let pixel = unsafe { image.unsafe_get_pixel(x as u32, y as u32) };
+                    let channels = pixel.channels();
                     let color = Color::from(channels[0], channels[1], channels[2], channels[3]);
                     client.send_pixel(
                         x + self.area.x + self.offset.0,
@@ -86,7 +89,7 @@ impl<T: PixelClient> Painter<T> {
                         color,
                     )?;
                     client.flush_pixels()?;
-                    std::thread::sleep(SLOWPAINT_DELAY);
+                    // std::thread::sleep(SLOWPAINT_DELAY);
                 }
             } else {
                 // Loop through all the pixels, and set their color
@@ -99,7 +102,8 @@ impl<T: PixelClient> Painter<T> {
                         }
 
                         // Get the pixel at this location
-                        let pixel = image.get_pixel(x as u32, y as u32);
+                        // SAFETY: The list above is generated from valid pixel indices only.
+                        let pixel = unsafe { image.unsafe_get_pixel(x as u32, y as u32) };
 
                         // Get the channels
                         let channels = pixel.channels();

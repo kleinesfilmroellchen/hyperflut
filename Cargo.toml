@@ -47,5 +47,5 @@ rand = "0.9.1"
 itertools = "0.14.0"
 
 [profile.release]
-lto = true
+lto = "fat"
 debug = "line-tables-only"

@@ -4,6 +4,7 @@ use std::net::{Ipv6Addr, SocketAddr, TcpStream, ToSocketAddrs};
 
 use anyhow::{anyhow, Result};
 use bufstream_fresh::BufStream;
+use log::debug;
 use net2::TcpBuilder;
 use regex::Regex;
 
@@ -49,6 +50,9 @@ pub struct TextTcpClient {
     buffer: String,
     should_buffer: bool,
     is_buffer_ready: bool,
+
+    /// buffer that is used to temporarily format into
+    formatting_buffer: String,
 }
 
 impl TextTcpClient {
@@ -60,6 +64,7 @@ impl TextTcpClient {
             buffer: String::new(),
             should_buffer: should_buffer,
             is_buffer_ready: false,
+            formatting_buffer: String::with_capacity(32),
         }
     }
 
@@ -76,16 +81,17 @@ impl TextTcpClient {
 
     /// Write a pixel to the given stream.
     pub fn write_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()> {
-        self.write_command(
-            format!("PX {} {} {}", x, y, color.as_hex()).as_bytes(),
-            true,
-        )
+        self.formatting_buffer.clear();
+        write_pixel_noformat(&mut self.formatting_buffer, x, y, color);
+        self.write_command()
     }
 
     /// Read the size of the screen.
     pub fn read_screen_size(&mut self) -> Result<(u16, u16)> {
         // Read the screen size
-        let data = self.write_read_command(b"SIZE")?;
+        let data = self.write_read_command("SIZE\n")?;
+
+        debug!("{data}");
 
         // Build a regex to parse the screen size
         let re = Regex::new(PIX_SERVER_SIZE_REGEX).unwrap();
@@ -107,12 +113,9 @@ impl TextTcpClient {
     }
 
     /// Write the given command to the given stream.
-    pub fn write_command(&mut self, cmd: &[u8], newline: bool) -> Result<()> {
+    pub fn write_command(&mut self) -> Result<()> {
         // Write the pixels and a new line
-        self.stream.write_all(cmd)?;
-        if newline {
-            self.stream.write_all(b"\n")?;
-        }
+        self.stream.write_all(self.formatting_buffer.as_bytes())?;
 
         // Flush, make sure to clear the send buffer
         // TODO: only flush each 100 pixels?
@@ -126,9 +129,11 @@ impl TextTcpClient {
     }
 
     /// Write the given command to the given stream, and read the output.
-    fn write_read_command(&mut self, cmd: &[u8]) -> Result<String> {
+    fn write_read_command(&mut self, cmd: &str) -> Result<String> {
+        self.formatting_buffer.clear();
+        self.formatting_buffer.push_str(cmd);
         // Write the command
-        self.write_command(cmd, true)?;
+        self.write_command()?;
 
         // Flush the pipe, ensure the command is actually sent
         self.stream.flush()?;
@@ -146,15 +151,30 @@ impl TextTcpClient {
 impl Drop for TextTcpClient {
     /// Nicely drop the connection when the client is disconnected.
     fn drop(&mut self) {
-        let _ = self.write_command(b"\nQUIT", true);
+        self.formatting_buffer.clear();
+        self.formatting_buffer.push_str("\nQUIT\n");
+        let _ = self.write_command();
     }
+}
+
+/// Formats a PX command without using slow formatting utilities (as well as lookup tables instead of integer to string functions).
+fn write_pixel_noformat(buffer: &mut String, x: u16, y: u16, color: Color) {
+    use crate::lut::HEX_TO_STR_16;
+
+    buffer.push_str("PX ");
+    buffer.push_str(HEX_TO_STR_16[x as usize]);
+    buffer.push(' ');
+    buffer.push_str(HEX_TO_STR_16[y as usize]);
+    buffer.push(' ');
+    color.write_hex(buffer);
+    buffer.push('\n');
 }
 
 impl PixelClient for TextTcpClient {
     fn send_pixel(&mut self, x: u16, y: u16, color: Color) -> Result<()> {
         if self.should_buffer {
             if !self.is_buffer_ready {
-                writeln!(&mut self.buffer, "PX {} {} {}", x, y, color.as_hex())?;
+                write_pixel_noformat(&mut self.buffer, x, y, color);
             }
         } else {
             self.write_pixel(x, y, color)?;
