@@ -40,9 +40,7 @@ gstreamer-app = { version = "0.23", optional = true }
 gstreamer-video = { version = "0.23", optional = true }
 log = { version = "0.4", features = ["std", "kv", "release_max_level_info"] }
 env_logger = "0.11"
-etherparse = "0.17.0"
 socket2 = { version = "0.5.9", features = ["all"] }
-async-channel = "2.3.1"
 rand = "0.9.1"
 itertools = "0.14.0"
 
