@@ -44,13 +44,17 @@ pub struct Arguments {
     #[arg(short = 'r', long, value_name = "RATE", default_value_t = 1)]
     fps: u32,
 
-    /// Image scaling algorithm to use (dev: )
+    /// Image scaling algorithm to use
     #[arg(short, long, value_name="SCALING", default_value="gaussian", value_parser=parse_filter_type)]
     scaling: FilterType,
 
-    /// Flush socket after each pixel [default: true]
-    #[arg(short, long, action = clap::ArgAction::Set, value_name = "ENABLED", default_value_t = true)]
+    /// Flush socket after each pixel [default: false]
+    #[arg(short, long, default_value_t = false)]
     flush: bool,
+
+    /// Use OFFSET command to save bandwidth on pixel coordinates [default: false]
+    #[arg(short, long, default_value_t = false)]
+    offset: bool,
 
     /// Paint super slowly.
     #[arg(long)]
@@ -174,5 +178,9 @@ impl ArgHandler {
 
     pub fn backend(&self) -> ClientType {
         self.data.backend
+    }
+
+    pub fn use_offset_command(&self) -> bool {
+        self.data.offset
     }
 }

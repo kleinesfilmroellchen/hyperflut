@@ -5,7 +5,7 @@ use itertools::Itertools;
 use log::{error, info};
 use rand::seq::SliceRandom;
 use std::sync::mpsc::Receiver;
-use std::time::Duration;
+// use std::time::Duration;
 
 use image::{DynamicImage, Pixel};
 
@@ -13,7 +13,7 @@ use crate::color::Color;
 use crate::pix::client::PixelClient;
 use crate::rect::Rect;
 
-pub const SLOWPAINT_DELAY: Duration = Duration::from_micros(1);
+// pub const SLOWPAINT_DELAY: Duration = Duration::from_micros(1);
 
 /// A painter that paints on a pixelflut panel.
 pub struct Painter<T: PixelClient> {
@@ -88,7 +88,6 @@ impl<T: PixelClient> Painter<T> {
                         y + self.area.y + self.offset.1,
                         color,
                     )?;
-                    client.flush_pixels()?;
                     // std::thread::sleep(SLOWPAINT_DELAY);
                 }
             } else {

@@ -57,15 +57,31 @@ pub struct TextTcpClient {
 
 impl TextTcpClient {
     /// Create a new client instance.
-    pub fn new(stream: TcpStream, flush: bool, should_buffer: bool) -> Self {
-        Self {
-            stream: BufStream::with_capacities(128, 8 * 1024, stream),
+    pub fn new(
+        stream: TcpStream,
+        flush: bool,
+        should_buffer: bool,
+        offset: Option<(u16, u16)>,
+    ) -> Result<Self> {
+        let mut me = Self {
+            stream: BufStream::with_capacities(128, 32 * 1024, stream),
             flush,
             buffer: String::new(),
             should_buffer: should_buffer,
             is_buffer_ready: false,
             formatting_buffer: String::with_capacity(32),
+        };
+
+        // Send an offset command if we were given an offset to use.
+        if let Some((x, y)) = offset {
+            log::info!("Using offset of {x}, {y}");
+            me.formatting_buffer.push_str(&format!("OFFSET {x} {y}\n"));
+            me.write_command()?;
+            me.formatting_buffer.clear();
+            me.stream.flush()?;
         }
+
+        Ok(me)
     }
 
     /// Create a new client instane from the given host, and connect to it.
@@ -74,9 +90,15 @@ impl TextTcpClient {
         addr: Option<impl ToSocketAddrs>,
         flush: bool,
         should_buffer: bool,
+        offset: Option<(u16, u16)>,
     ) -> Result<Self> {
         // Create a new stream, and instantiate the client
-        Ok(Self::new(create_stream(host, addr)?, flush, should_buffer))
+        Self::new(
+            create_stream(host, addr)?,
+            flush,
+            should_buffer,
+            offset,
+        )
     }
 
     /// Write a pixel to the given stream.
@@ -118,8 +140,6 @@ impl TextTcpClient {
         self.stream.write_all(self.formatting_buffer.as_bytes())?;
 
         // Flush, make sure to clear the send buffer
-        // TODO: only flush each 100 pixels?
-        // TODO: make buffer size configurable?
         if self.flush {
             self.stream.flush()?;
         }

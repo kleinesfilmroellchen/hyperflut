@@ -59,6 +59,7 @@ fn start(arg_handler: &ArgHandler) {
         arg_handler.count(),
         size,
         arg_handler.offset(),
+        arg_handler.use_offset_command(),
         arg_handler.flush(),
         image_manager.image_count() == 1 && !arg_handler.slowpaint(),
         arg_handler.slowpaint(),
@@ -95,6 +96,7 @@ fn gather_host_facts(arg_handler: &ArgHandler) -> Result<(u16, u16)> {
         arg_handler.address().clone(),
         false,
         false,
+        None,
     )?
     .read_screen_size()?;
 

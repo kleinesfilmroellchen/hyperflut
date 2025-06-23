@@ -35,6 +35,7 @@ pub struct Canvas {
     offset: (u16, u16),
     client_type: ClientType,
     should_buffer: bool,
+    use_offset_command: bool,
     slowpaint: bool,
 }
 
@@ -47,6 +48,7 @@ impl Canvas {
         painter_count: usize,
         size: (u16, u16),
         offset: (u16, u16),
+        use_offset_command: bool,
         flush: bool,
         should_buffer: bool,
         slowpaint: bool,
@@ -60,6 +62,7 @@ impl Canvas {
             painter_handles: Vec::with_capacity(painter_count),
             size,
             offset,
+            use_offset_command,
             should_buffer,
             slowpaint,
         };
@@ -106,6 +109,7 @@ impl Canvas {
         };
         let client_type = self.client_type;
         let slowpaint = self.slowpaint;
+        let use_offset_command = self.use_offset_command;
 
         // Create a channel to push new images
         let (tx, rx): (Sender<DynamicImage>, Receiver<DynamicImage>) = mpsc::channel();
@@ -125,9 +129,21 @@ impl Canvas {
                             address.clone(),
                             flush,
                             should_buffer,
+                            if use_offset_command {
+                                Some(offset)
+                            } else {
+                                None
+                            },
                         ) {
                             Ok(client) => {
-                                Self::run_painter(client, area, offset, &rx, slowpaint);
+                                // only apply offset in painter if the OFFSET command is not used.
+                                Self::run_painter(
+                                    client,
+                                    area,
+                                    if use_offset_command { (0, 0) } else { offset },
+                                    &rx,
+                                    slowpaint,
+                                );
                             }
                             Err(e) => {
                                 error!("Painter failed to connect: {}", e);
@@ -142,7 +158,7 @@ impl Canvas {
             }
         });
 
-        // Create a new painter handle, pust it to the list
+        // Create a new painter handle, push it to the list
         self.painter_handles.push(Handle::new(thread, area, tx));
     }
 
